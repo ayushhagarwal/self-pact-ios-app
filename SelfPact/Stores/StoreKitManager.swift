@@ -149,57 +149,74 @@ class StoreKitManager: ObservableObject {
         }
     }
     
-    // MARK: - Transaction Verification
+    // MARK: - Transaction Processing (Centralized)
     
-    private func handleVerification(_ verification: VerificationResult<Transaction>, productID: String) async -> Bool {
+    /// Centralized transaction processing used by purchase, restore, listener, and launch check
+    /// Returns number of credits granted (0 if transaction was not processed)
+    private func processTransaction(_ verification: VerificationResult<Transaction>) async -> Int {
         switch verification {
         case .verified(let transaction):
-            // Check if we've already processed this transaction
-            guard !processedTransactionIDs.contains(transaction.id) else {
+            // Filter: Only process our product IDs
+            guard transaction.productID == IAPProduct.oneSeal.rawValue ||
+                  transaction.productID == IAPProduct.fiveSeals.rawValue else {
                 await transaction.finish()
-                return false
+                return 0
             }
             
-            // Grant credits based on product ID
-            let creditsAwarded = await grantCredits(for: productID, transactionID: transaction.id)
+            // Check if already processed (prevent duplicates)
+            guard !processedTransactionIDs.contains(transaction.id) else {
+                await transaction.finish()
+                return 0
+            }
             
-            // Finish the transaction
+            // Validate product ID
+            guard let iapProduct = IAPProduct(rawValue: transaction.productID) else {
+                await transaction.finish()
+                return 0
+            }
+            
+            // Ensure pactStore is configured
+            guard let pactStore = pactStore else {
+                // DO NOT mark as processed - allow retry on next launch
+                await transaction.finish()
+                return 0
+            }
+            
+            let credits = iapProduct.credits
+            
+            // CRITICAL: Mark as processed FIRST to prevent race condition
+            // If app crashes after this but before credit grant, we prefer
+            // losing credits over granting duplicates (Apple's recommendation)
+            processedTransactionIDs.insert(transaction.id)
+            saveProcessedTransactions()
+            
+            // Grant credits atomically
+            pactStore.addCredits(credits)
+            
+            // Finish transaction
             await transaction.finish()
             
-            return creditsAwarded
+            return credits
             
         case .unverified(let transaction, _):
-            purchaseError = "Transaction could not be verified."
-            
             // Still finish unverified transactions to prevent pending state
             await transaction.finish()
-            return false
+            return 0
         }
     }
     
-    // MARK: - Grant Credits
+    // MARK: - Transaction Verification (for Purchase Flow)
     
-    private func grantCredits(for productID: String, transactionID: UInt64) async -> Bool {
-        guard let iapProduct = IAPProduct(rawValue: productID) else {
+    private func handleVerification(_ verification: VerificationResult<Transaction>, productID: String) async -> Bool {
+        let credits = await processTransaction(verification)
+        
+        if credits == 0 {
+            // Check if it was unverified
+            if case .unverified = verification {
+                purchaseError = "Transaction could not be verified."
+            }
             return false
         }
-        
-        // CRITICAL: Ensure pactStore is configured
-        guard let pactStore = pactStore else {
-            // DO NOT mark as processed - allow retry on next launch
-            return false
-        }
-        
-        let credits = iapProduct.credits
-        
-        // IMPORTANT: Mark as processed FIRST to prevent race condition
-        // If app crashes after this but before credit grant, we prefer
-        // losing credits over granting duplicates (Apple's recommendation)
-        processedTransactionIDs.insert(transactionID)
-        saveProcessedTransactions()
-        
-        // Grant credits to store
-        pactStore.addCredits(credits)
         
         return true
     }
@@ -215,38 +232,16 @@ class StoreKitManager: ObservableObject {
     }
     
     private func handleTransactionUpdate(_ result: VerificationResult<Transaction>) async {
-        switch result {
-        case .verified(let transaction):
-            // Check if already processed
-            guard !processedTransactionIDs.contains(transaction.id) else {
-                await transaction.finish()
-                return
-            }
-            
-            // Process the transaction
-            _ = await grantCredits(for: transaction.productID, transactionID: transaction.id)
-            await transaction.finish()
-            
-        case .unverified(let transaction, _):
-            await transaction.finish()
-        }
+        // Use centralized processing
+        _ = await processTransaction(result)
     }
     
-    // MARK: - Pending Transactions
+    // MARK: - Pending Transactions Check (on Launch)
     
     func checkPendingTransactions() async {
-        // Check for unfinished transactions on app launch
-        for await result in Transaction.currentEntitlements {
-            switch result {
-            case .verified(let transaction):
-                if !processedTransactionIDs.contains(transaction.id) {
-                    _ = await grantCredits(for: transaction.productID, transactionID: transaction.id)
-                }
-                await transaction.finish()
-                
-            case .unverified(let transaction, _):
-                await transaction.finish()
-            }
+        // Check all transactions on app launch for unprocessed purchases
+        for await result in Transaction.all {
+            _ = await processTransaction(result)
         }
     }
     
@@ -263,33 +258,19 @@ class StoreKitManager: ObservableObject {
         }
         
         // For consumables: Check Transaction.all for unprocessed transactions
-        // Note: We can only restore UNPROCESSED purchases, not consumed credits
+        // Filter only verified and our product IDs (done in processTransaction)
         var totalRestored = 0
         
         for await result in Transaction.all {
-            switch result {
-            case .verified(let transaction):
-                // Only process if not already processed
-                if !processedTransactionIDs.contains(transaction.id) {
-                    if let credits = IAPProduct(rawValue: transaction.productID)?.credits {
-                        let success = await grantCredits(for: transaction.productID, transactionID: transaction.id)
-                        if success {
-                            totalRestored += credits
-                        }
-                    }
-                }
-                await transaction.finish()
-                
-            case .unverified(let transaction, _):
-                await transaction.finish()
-            }
+            let credits = await processTransaction(result)
+            totalRestored += credits
         }
         
         if totalRestored > 0 {
             restoreSuccess = true
             restoredCredits = totalRestored
         } else {
-            purchaseError = "No unprocessed purchases to restore. Seal credits are consumed when used and cannot be restored after use."
+            purchaseError = "No restorable purchases found for this Apple ID."
         }
     }
     
