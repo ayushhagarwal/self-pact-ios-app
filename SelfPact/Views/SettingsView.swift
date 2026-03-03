@@ -7,7 +7,8 @@ struct SettingsView: View {
     
     var body: some View {
         ZStack {
-            AppColors.background.ignoresSafeArea()
+            AppColors.backgroundGradient
+                .ignoresSafeArea()
             
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -116,7 +117,7 @@ struct SettingsView: View {
             .background(AppColors.surface)
             .cornerRadius(14)
         }
-        .padding(.bottom, 24)
+        .padding(.bottom, 20)
     }
     
     // MARK: - Credits Section
@@ -192,7 +193,7 @@ struct SettingsView: View {
             .background(AppColors.surface)
             .cornerRadius(14)
         }
-        .padding(.bottom, 24)
+        .padding(.bottom, 20)
     }
     
     // MARK: - Legal Section
@@ -253,12 +254,12 @@ struct SettingsView: View {
                 
                 VStack(alignment: .leading, spacing: 1) {
                     Text("SelfPact")
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(AppColors.textPrimary)
                     
                     Text("This app collects no data.")
-                        .font(.system(size: 12))
-                        .foregroundColor(AppColors.textTertiary)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(AppColors.gold)
                 }
                 
                 Spacer()

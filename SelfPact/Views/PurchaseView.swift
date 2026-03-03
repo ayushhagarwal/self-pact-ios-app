@@ -41,7 +41,8 @@ struct PurchaseView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppColors.background.ignoresSafeArea()
+                AppColors.backgroundGradient
+                    .ignoresSafeArea()
                 
                 ScrollView {
                     VStack(spacing: 0) {
@@ -122,62 +123,79 @@ struct PurchaseView: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 20)
                     .fill(AppColors.goldGlow)
-                    .frame(width: 72, height: 72)
+                    .frame(width: 80, height: 80)
                 
                 ZStack {
-                    RoundedRectangle(cornerRadius: 14)
+                    RoundedRectangle(cornerRadius: 16)
                         .fill(AppColors.goldGlowStrong)
-                        .frame(width: 48, height: 48)
+                        .frame(width: 54, height: 54)
                     
                     Image(systemName: "lock.fill")
-                        .font(.system(size: 22))
+                        .font(.system(size: 26))
                         .foregroundColor(AppColors.gold)
                 }
             }
-            .padding(.bottom, 20)
+            .padding(.bottom, 24)
             
-            Text("Seal Your\nCommitments")
-                .font(.system(size: 28, weight: .bold))
+            Text("Lock Your\nCommitment")
+                .font(.system(size: 34, weight: .bold))
                 .foregroundColor(AppColors.textPrimary)
-                .tracking(-0.5)
+                .tracking(-1.2)
                 .multilineTextAlignment(.center)
-                .lineSpacing(2)
-                .padding(.bottom, 10)
+                .lineSpacing(0)
+                .padding(.bottom, 12)
             
-            Text("Seal credits lock your pacts permanently. Once sealed, a commitment cannot be edited.")
-                .font(.system(size: 14))
+            Text("Sealing makes your pact permanent.\nThis is your contract with your future self.")
+                .font(.system(size: 15, weight: .medium))
                 .foregroundColor(AppColors.textSecondary)
+                .tracking(-0.1)
                 .multilineTextAlignment(.center)
-                .lineSpacing(4)
+                .lineSpacing(6)
                 .padding(.horizontal, 10)
-                .padding(.bottom, 16)
+                .padding(.bottom, 20)
             
             HStack(spacing: 6) {
                 Image(systemName: "shield.fill")
-                    .font(.system(size: 12))
+                    .font(.system(size: 13))
                     .foregroundColor(AppColors.gold)
                 
                 Text("\(pactStore.userData.creditCount) credit\(pactStore.userData.creditCount != 1 ? "s" : "") available")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundColor(AppColors.gold)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
             .background(AppColors.surface)
-            .cornerRadius(10)
+            .cornerRadius(12)
         }
-        .padding(.bottom, 32)
+        .padding(.bottom, 36)
     }
     
     // MARK: - Products Section
     
     private var productsSection: some View {
-        VStack(spacing: 12) {
-            ForEach(products) { product in
+        VStack(spacing: 14) {
+            // Featured product first (5-pack)
+            ForEach(products.sorted(by: { $0.featured && !$1.featured })) { product in
                 productCard(product: product)
+                
+                // Add "Most people choose 5" text after 5-pack
+                if product.featured {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(AppColors.gold.opacity(0.7))
+                        
+                        Text("Most people choose 5")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(AppColors.textTertiary)
+                            .italic()
+                    }
+                    .padding(.bottom, 6)
+                }
             }
         }
-        .padding(.bottom, 24)
+        .padding(.bottom, 28)
     }
     
     private func productCard(product: Product) -> some View {
@@ -186,30 +204,34 @@ struct PurchaseView: View {
             showPurchaseAlert = true
         } label: {
             HStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(product.title)
-                        .font(.system(size: 17, weight: .bold))
+                        .font(.system(size: 18, weight: .bold))
                         .foregroundColor(AppColors.textPrimary)
-                        .tracking(-0.2)
+                        .tracking(-0.4)
                     
                     Text(product.description)
-                        .font(.system(size: 13))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundColor(AppColors.textSecondary)
+                        .tracking(-0.1)
                 }
                 
                 Spacer()
                 
                 Text(product.price)
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(AppColors.gold)
-                    .tracking(-0.5)
+                    .font(.system(size: 24, weight: .heavy))
+                    .foregroundColor(product.featured ? AppColors.gold : AppColors.textPrimary)
+                    .tracking(-1.0)
             }
-            .padding(20)
-            .background(product.featured ? AppColors.goldGlow : AppColors.surface)
-            .cornerRadius(16)
+            .padding(22)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(product.featured ? AppColors.goldGlow : AppColors.surface)
+                    .shadow(color: product.featured ? AppColors.gold.opacity(0.15) : Color.clear, radius: 12, x: 0, y: 4)
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(product.featured ? AppColors.goldMuted : AppColors.border, lineWidth: 1)
+                    .stroke(product.featured ? AppColors.gold.opacity(0.4) : AppColors.border, lineWidth: product.featured ? 2 : 1)
             )
             .overlay(
                 // Badge
@@ -217,21 +239,22 @@ struct PurchaseView: View {
                     if let badge = product.badge {
                         HStack(spacing: 3) {
                             Image(systemName: "bolt.fill")
-                                .font(.system(size: 8))
+                                .font(.system(size: 9))
                             
                             Text(badge)
-                                .font(.system(size: 10, weight: .bold))
-                                .tracking(0.2)
+                                .font(.system(size: 11, weight: .bold))
+                                .tracking(0.3)
                         }
                         .foregroundColor(AppColors.background)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
                         .background(AppColors.gold)
                         .clipShape(BadgeShape())
                     }
                 },
                 alignment: .topTrailing
             )
+            .scaleEffect(product.featured ? 1.02 : 1)
         }
         .buttonStyle(.plain)
     }

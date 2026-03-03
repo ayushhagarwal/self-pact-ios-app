@@ -16,7 +16,8 @@ struct PactDetailView: View {
     
     var body: some View {
         ZStack {
-            AppColors.background.ignoresSafeArea()
+            AppColors.backgroundGradient
+                .ignoresSafeArea()
             
             if let pact = pact {
                 mainContent(pact: pact)
@@ -293,24 +294,42 @@ struct PactDetailView: View {
     // MARK: - Progress Card
     
     private func progressCard(pact: Pact) -> some View {
-        VStack(spacing: 10) {
-            HStack {
+        VStack(spacing: 14) {
+            HStack(alignment: .lastTextBaseline) {
                 Text("Timeline")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(AppColors.textTertiary)
+                    .tracking(0.3)
                 
                 Spacer()
                 
-                Text("\(Int(pact.timeProgress))%")
-                    .font(.system(size: 13, weight: .bold))
+                Text("\(Int(pact.timeProgress))")
+                    .font(.system(size: 32, weight: .heavy))
                     .foregroundColor(AppColors.gold)
+                    .tracking(-1.2)
+                +
+                Text("%")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(AppColors.goldLight)
             }
             
-            ProgressBar(progress: pact.timeProgress, height: 5)
+            ProgressBar(
+                progress: pact.timeProgress,
+                height: 6,
+                color: AppColors.gold,
+                trackColor: AppColors.surfaceHighlight
+            )
         }
-        .padding(16)
-        .background(AppColors.surface)
-        .cornerRadius(14)
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(AppColors.surface)
+                .shadow(color: AppColors.gold.opacity(0.08), radius: 8, x: 0, y: 2)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(AppColors.gold.opacity(0.15), lineWidth: 1)
+        )
         .padding(.bottom, 14)
     }
     

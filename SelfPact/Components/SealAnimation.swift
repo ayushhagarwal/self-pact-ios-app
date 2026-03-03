@@ -15,8 +15,11 @@ struct SealAnimation: View {
     @State private var textOffset: CGFloat = 12
     @State private var lockOpacity: Double = 0
     @State private var particles: [ParticleState] = []
+    @State private var spotlightScale: CGFloat = 0.3
+    @State private var spotlightOpacity: Double = 0
+    @State private var shimmerParticles: [ParticleState] = []
     
-    private let particleCount = 16
+    private let particleCount = 24
     
     struct ParticleState: Identifiable {
         let id = UUID()
@@ -30,15 +33,29 @@ struct SealAnimation: View {
     var body: some View {
         if visible {
             ZStack {
-                // Overlay
-                Color.black.opacity(0.88)
+                // Overlay with blur
+                Color.black.opacity(0.92)
                     .opacity(overlayOpacity)
                     .ignoresSafeArea()
+                
+                // Radial spotlight
+                RadialGradient(
+                    gradient: Gradient(colors: [
+                        AppColors.gold.opacity(0.15),
+                        AppColors.gold.opacity(0.05),
+                        Color.clear
+                    ]),
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: 200
+                )
+                .scaleEffect(spotlightScale)
+                .opacity(spotlightOpacity)
                 
                 // Card container
                 VStack(spacing: 0) {
                     ZStack {
-                        // Particles
+                        // Explosion particles
                         ForEach(particles) { particle in
                             Circle()
                                 .fill(AppColors.gold)
@@ -46,6 +63,17 @@ struct SealAnimation: View {
                                 .offset(x: particle.x, y: particle.y)
                                 .opacity(particle.opacity)
                                 .scaleEffect(particle.scale)
+                        }
+                        
+                        // Shimmer particles (floating gold dust)
+                        ForEach(shimmerParticles) { particle in
+                            Circle()
+                                .fill(AppColors.goldLight)
+                                .frame(width: particle.size, height: particle.size)
+                                .offset(x: particle.x, y: particle.y)
+                                .opacity(particle.opacity)
+                                .scaleEffect(particle.scale)
+                                .blur(radius: 0.5)
                         }
                         
                         // Ring
@@ -81,20 +109,21 @@ struct SealAnimation: View {
                     
                     // Text
                     Text("Your pact is sealed.")
-                        .font(.system(size: 20, weight: .bold))
+                        .font(.system(size: 26, weight: .bold))
                         .foregroundColor(AppColors.textPrimary)
-                        .tracking(-0.3)
+                        .tracking(-0.8)
                         .multilineTextAlignment(.center)
                         .opacity(textOpacity)
                         .offset(y: textOffset)
-                        .padding(.top, 28)
+                        .padding(.top, 32)
                     
                     Text("This commitment is now immutable.")
-                        .font(.system(size: 14))
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundColor(AppColors.textSecondary)
+                        .tracking(-0.1)
                         .multilineTextAlignment(.center)
                         .opacity(lockOpacity)
-                        .padding(.top, 6)
+                        .padding(.top, 8)
                 }
                 .padding(.vertical, 44)
                 .padding(.horizontal, 44)
@@ -118,24 +147,38 @@ struct SealAnimation: View {
     }
     
     private func startAnimation() {
-        // Initialize particles
+        // Initialize explosion particles
         particles = (0..<particleCount).map { i in
             ParticleState(size: i % 3 == 0 ? 5 : 4)
         }
         
-        // Phase 1: Fade in overlay and card
-        withAnimation(.easeOut(duration: 0.5)) {
+        // Initialize shimmer particles (floating gold dust)
+        shimmerParticles = (0..<12).map { i in
+            let size: CGFloat = i % 2 == 0 ? 3 : 2
+            return ParticleState(size: size)
+        }
+        
+        // Phase 1: Fade in overlay, spotlight, and card
+        withAnimation(.easeOut(duration: 0.6)) {
             overlayOpacity = 1
             cardOpacity = 1
         }
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
             cardScale = 1
         }
         
-        // Phase 2: Seal animation (after 900ms delay)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-            // Haptic feedback
-            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        // Spotlight appears
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.easeOut(duration: 1.2)) {
+                spotlightOpacity = 1
+                spotlightScale = 1.5
+            }
+        }
+        
+        // Phase 2: Seal animation (after 1000ms delay)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            // Stronger haptic feedback
+            let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)
             impactFeedback.impactOccurred()
             
             // Seal pop in
@@ -158,10 +201,10 @@ struct SealAnimation: View {
                 }
             }
             
-            // Particles
+            // Explosion particles
             for i in 0..<particleCount {
                 let angle = (Double(i) / Double(particleCount)) * .pi * 2
-                let distance = 70 + Double.random(in: 0...70)
+                let distance = 70 + Double.random(in: 0...80)
                 let targetX = CGFloat(cos(angle) * distance)
                 let targetY = CGFloat(sin(angle) * distance - 20)
                 
@@ -174,6 +217,22 @@ struct SealAnimation: View {
                 withAnimation(.easeOut(duration: 1.4)) {
                     particles[i].x = targetX
                     particles[i].y = targetY
+                }
+            }
+            
+            // Shimmer particles (floating gold dust)
+            for i in 0..<shimmerParticles.count {
+                let delay = Double.random(in: 0.2...0.8)
+                let targetX = CGFloat.random(in: -60...60)
+                let targetY = CGFloat.random(in: -40...40)
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    withAnimation(.easeInOut(duration: 2.0)) {
+                        shimmerParticles[i].opacity = Double.random(in: 0.3...0.6)
+                        shimmerParticles[i].scale = CGFloat.random(in: 0.5...1.0)
+                        shimmerParticles[i].x = targetX
+                        shimmerParticles[i].y = targetY
+                    }
                 }
             }
             
@@ -200,8 +259,8 @@ struct SealAnimation: View {
                 }
             }
             
-            // Complete after delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.3) {
+            // Complete after delay (extended for more dramatic timing)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) {
                 onComplete()
             }
         }

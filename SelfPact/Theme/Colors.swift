@@ -17,13 +17,13 @@ struct AppColors {
     static let textTertiary = Color(hex: "5F5D57")
     static let textMuted = Color(hex: "44423D")
     
-    // Gold
-    static let gold = Color(hex: "D4A843")
-    static let goldLight = Color(hex: "E8C35E")
+    // Gold (slightly muted for premium feel)
+    static let gold = Color(hex: "CFA03D")
+    static let goldLight = Color(hex: "E0B856")
     static let goldDim = Color(hex: "8A6F2A")
     static let goldMuted = Color(hex: "6B5722")
-    static let goldGlow = Color(hex: "D4A843").opacity(0.12)
-    static let goldGlowStrong = Color(hex: "D4A843").opacity(0.22)
+    static let goldGlow = Color(hex: "CFA03D").opacity(0.12)
+    static let goldGlowStrong = Color(hex: "CFA03D").opacity(0.22)
     
     // Indigo
     static let indigo = Color(hex: "6872CF")
@@ -49,6 +49,18 @@ struct AppColors {
     
     // Reveal background
     static let revealBackground = Color(hex: "060608")
+    
+    // Gradients for subtle depth
+    static var backgroundGradient: LinearGradient {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color(hex: "0D0D12"),
+                Color(hex: "0A0A0E")
+            ]),
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
 }
 
 // MARK: - Color Extension

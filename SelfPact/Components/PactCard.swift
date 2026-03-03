@@ -144,8 +144,15 @@ struct PactCard: View {
             .padding(.leading, 14)
             .padding(.trailing, 16)
         }
-        .background(AppColors.surface)
-        .cornerRadius(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(AppColors.surface)
+                .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 2)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(AppColors.border.opacity(0.5), lineWidth: 0.5)
+        )
     }
     
     private func outcomeText(_ outcome: PactOutcome) -> String {

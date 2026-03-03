@@ -16,7 +16,8 @@ struct CreatePactView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AppColors.background.ignoresSafeArea()
+                AppColors.backgroundGradient
+                    .ignoresSafeArea()
                 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
@@ -72,40 +73,41 @@ struct CreatePactView: View {
     private var headerArea: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack {
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 14)
                     .fill(AppColors.goldGlow)
-                    .frame(width: 44, height: 44)
+                    .frame(width: 52, height: 52)
                 
                 Image(systemName: "pencil.line")
-                    .font(.system(size: 18))
+                    .font(.system(size: 20))
                     .foregroundColor(AppColors.gold)
             }
-            .padding(.bottom, 16)
+            .padding(.bottom, 20)
             
             Text("Draft a Pact")
-                .font(.system(size: 26, weight: .bold))
+                .font(.system(size: 32, weight: .bold))
                 .foregroundColor(AppColors.textPrimary)
-                .tracking(-0.4)
-                .padding(.bottom, 6)
+                .tracking(-1.0)
+                .padding(.bottom, 10)
             
-            Text("Write with intention. Once sealed, this cannot be changed.")
-                .font(.system(size: 15))
+            Text("Write clearly. This cannot be changed once sealed.")
+                .font(.system(size: 15, weight: .medium))
                 .foregroundColor(AppColors.textSecondary)
-                .lineSpacing(4)
+                .tracking(-0.1)
+                .lineSpacing(5)
         }
-        .padding(.bottom, 30)
+        .padding(.bottom, 40)
     }
     
     // MARK: - Form Fields
     
     private var formFields: some View {
-        VStack(spacing: 22) {
+        VStack(spacing: 28) {
             // Goal Title
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 Text("GOAL TITLE")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(AppColors.textTertiary)
-                    .tracking(0.6)
+                    .tracking(0.8)
                 
                 TextField("e.g., Run a marathon by December", text: $title)
                     .textFieldStyle(PactTextFieldStyle(hasError: errors["title"] != nil))
@@ -119,12 +121,12 @@ struct CreatePactView: View {
             }
             
             // Why This Matters
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 6) {
                     Text("WHY THIS MATTERS")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(AppColors.textTertiary)
-                        .tracking(0.6)
+                        .tracking(0.8)
                     
                     Text("Optional")
                         .font(.system(size: 11, weight: .medium))
@@ -137,12 +139,12 @@ struct CreatePactView: View {
             }
             
             // Measurable Target
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 6) {
                     Text("MEASURABLE TARGET")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(AppColors.textTertiary)
-                        .tracking(0.6)
+                        .tracking(0.8)
                     
                     Text("Optional")
                         .font(.system(size: 11, weight: .medium))
@@ -154,16 +156,20 @@ struct CreatePactView: View {
             }
             
             // Target Date
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
                     Image(systemName: "calendar")
-                        .font(.system(size: 11))
-                        .foregroundColor(AppColors.textTertiary)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(AppColors.gold)
                     
                     Text("TARGET DATE")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(AppColors.textTertiary)
-                        .tracking(0.6)
+                        .tracking(0.8)
+                    
+                    Text("Required")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(AppColors.gold.opacity(0.7))
                 }
                 
                 Button {
@@ -171,7 +177,7 @@ struct CreatePactView: View {
                 } label: {
                     HStack {
                         Text(targetDate.formatted(.dateTime.year().month().day()))
-                            .font(.system(size: 16))
+                            .font(.system(size: 16, weight: .medium))
                             .foregroundColor(AppColors.textPrimary)
                         
                         Spacer()
@@ -185,7 +191,7 @@ struct CreatePactView: View {
                     .cornerRadius(12)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(errors["targetDate"] != nil ? AppColors.error : AppColors.border, lineWidth: 1)
+                            .stroke(errors["targetDate"] != nil ? AppColors.error : AppColors.gold.opacity(0.2), lineWidth: errors["targetDate"] != nil ? 1 : 1.5)
                     )
                 }
                 .buttonStyle(.plain)
