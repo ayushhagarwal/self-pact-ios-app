@@ -97,6 +97,11 @@ struct Pact: Identifiable, Codable, Equatable {
     var isReady: Bool {
         status == .sealed && Date() >= targetDate
     }
+    
+    // SECURITY: Enforce immutability for sealed pacts
+    var canModify: Bool {
+        return status == .draft
+    }
 }
 
 // MARK: - User Data

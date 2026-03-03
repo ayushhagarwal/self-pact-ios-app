@@ -2,7 +2,6 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var pactStore: PactStore
-    @State private var showDisableBackupAlert = false
     @State private var showPurchase = false
     
     var body: some View {
@@ -19,8 +18,8 @@ struct SettingsView: View {
                         .padding(.top, 8)
                         .padding(.bottom, 28)
                     
-                    // Backup section
-                    backupSection
+                    // Storage section
+                    storageSection
                     
                     // Credits section
                     creditsSection
@@ -38,81 +37,45 @@ struct SettingsView: View {
         .sheet(isPresented: $showPurchase) {
             PurchaseView()
         }
-        .alert("Disable Backup?", isPresented: $showDisableBackupAlert) {
-            Button("Keep Enabled", role: .cancel) { }
-            Button("Disable", role: .destructive) {
-                pactStore.toggleICloudSync(false)
-            }
-        } message: {
-            Text("If backup is disabled, your data cannot be recovered if you change or reset your device.")
-        }
     }
     
-    // MARK: - Backup Section
+    // MARK: - Storage Section
     
-    private var backupSection: some View {
+    private var storageSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("BACKUP")
+            Text("DATA STORAGE")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(AppColors.textTertiary)
                 .tracking(0.8)
                 .padding(.leading, 4)
             
             VStack(spacing: 0) {
-                HStack(spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(pactStore.userData.iCloudSyncEnabled ? AppColors.indigoGlow : AppColors.surfaceHighlight)
+                            .fill(AppColors.surfaceHighlight)
                             .frame(width: 32, height: 32)
                         
-                        Image(systemName: pactStore.userData.iCloudSyncEnabled ? "cloud.fill" : "cloud.slash.fill")
+                        Image(systemName: "internaldrive.fill")
                             .font(.system(size: 14))
-                            .foregroundColor(pactStore.userData.iCloudSyncEnabled ? AppColors.indigo : AppColors.textTertiary)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("iCloud Sync")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(AppColors.textPrimary)
-                        
-                        Text(pactStore.userData.iCloudSyncEnabled ? "Your pacts are backed up" : "Backup disabled")
-                            .font(.system(size: 12))
                             .foregroundColor(AppColors.textTertiary)
                     }
                     
-                    Spacer()
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Local Storage Only")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(AppColors.textPrimary)
+                        
+                        Text("Your commitments are stored privately on this device.\nSync across devices is not available.")
+                            .font(.system(size: 13))
+                            .foregroundColor(AppColors.textSecondary)
+                            .lineSpacing(4)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     
-                    Toggle("", isOn: Binding(
-                        get: { pactStore.userData.iCloudSyncEnabled },
-                        set: { newValue in
-                            if newValue {
-                                pactStore.toggleICloudSync(true)
-                            } else {
-                                showDisableBackupAlert = true
-                            }
-                        }
-                    ))
-                    .tint(AppColors.indigo)
+                    Spacer(minLength: 0)
                 }
                 .padding(14)
-                
-                if !pactStore.userData.iCloudSyncEnabled {
-                    VStack {
-                        Text("Data not recoverable — enable backup to protect your pacts.")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(AppColors.error)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(12)
-                    .frame(maxWidth: .infinity)
-                    .background(AppColors.errorGlow)
-                    .overlay(
-                        Rectangle()
-                            .fill(AppColors.error.opacity(0.15))
-                            .frame(height: 1),
-                        alignment: .top
-                    )
-                }
             }
             .background(AppColors.surface)
             .cornerRadius(14)
@@ -208,28 +171,30 @@ struct SettingsView: View {
             
             VStack(spacing: 0) {
                 // Privacy Policy
+                // TODO: Replace with actual privacy policy URL before App Store submission
                 Button {
-                    if let url = URL(string: "https://example.com/privacy") {
-                        UIApplication.shared.open(url)
-                    }
+                    // Disabled until real URL is provided
                 } label: {
                     settingsRow(icon: "lock.fill", title: "Privacy Policy")
                 }
                 .buttonStyle(.plain)
+                .disabled(true)
+                .opacity(0.5)
                 
                 Divider()
                     .background(AppColors.border)
                     .padding(.horizontal, 14)
                 
-                // Terms of Use
+                // Support and Feedback
+                // TODO: Replace with actual support URL before App Store submission
                 Button {
-                    if let url = URL(string: "https://example.com/terms") {
-                        UIApplication.shared.open(url)
-                    }
+                    // Disabled until real URL is provided
                 } label: {
-                    settingsRow(icon: "doc.text.fill", title: "Terms of Use")
+                    settingsRow(icon: "envelope.fill", title: "Support and Feedback")
                 }
                 .buttonStyle(.plain)
+                .disabled(true)
+                .opacity(0.5)
             }
             .background(AppColors.surface)
             .cornerRadius(14)

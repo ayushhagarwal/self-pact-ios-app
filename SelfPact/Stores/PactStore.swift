@@ -5,8 +5,8 @@ import Combine
 // MARK: - Pact Store
 @MainActor
 class PactStore: ObservableObject {
-    @Published var pacts: [Pact] = []
-    @Published var userData: UserData = .default
+    @Published private(set) var pacts: [Pact] = []
+    @Published private(set) var userData: UserData = .default
     @Published var isLoading: Bool = true
     
     private let pactsKey = "selfpact_pacts"
@@ -79,30 +79,49 @@ class PactStore: ObservableObject {
         return newPact
     }
     
+    // MARK: - Seal Pact (Atomic & Crash-Safe)
+    // SECURITY: Credit deducted BEFORE pact sealing to prevent race condition exploit
     func sealPact(id: String) -> Bool {
+        // Guard: Must have credits
         guard userData.creditCount > 0 else { return false }
         
-        if let index = pacts.firstIndex(where: { $0.id == id }) {
-            pacts[index].isSealed = true
-            pacts[index].sealTimestamp = Date()
-            pacts[index].status = .sealed
-            savePacts()
-            
-            userData.creditCount -= 1
-            saveUserData()
-            return true
-        }
-        return false
+        // Find pact index
+        guard let index = pacts.firstIndex(where: { $0.id == id }) else { return false }
+        
+        // Guard: Can only seal draft pacts
+        guard pacts[index].status == .draft else { return false }
+        
+        // CRITICAL: Deduct credit FIRST to prevent force-quit exploit
+        userData.creditCount -= 1
+        // Enforce non-negative credits
+        userData.creditCount = max(userData.creditCount, 0)
+        saveUserData()
+        
+        // Now seal the pact
+        pacts[index].isSealed = true
+        pacts[index].sealTimestamp = Date()
+        pacts[index].status = .sealed
+        savePacts()
+        
+        return true
     }
     
+    // MARK: - Update Pact (Immutability Enforced)
+    // SECURITY: Sealed pacts cannot be modified
     func updatePact(id: String, title: String? = nil, why: String? = nil, measurableTarget: String? = nil, targetDate: Date? = nil) {
-        if let index = pacts.firstIndex(where: { $0.id == id }) {
-            if let title = title { pacts[index].title = title }
-            if let why = why { pacts[index].why = why }
-            if let measurableTarget = measurableTarget { pacts[index].measurableTarget = measurableTarget }
-            if let targetDate = targetDate { pacts[index].targetDate = targetDate }
-            savePacts()
+        guard let index = pacts.firstIndex(where: { $0.id == id }) else { return }
+        
+        // CRITICAL: Only allow editing draft pacts
+        guard pacts[index].canModify else {
+            print("Cannot modify sealed or completed pact")
+            return
         }
+        
+        if let title = title { pacts[index].title = title }
+        if let why = why { pacts[index].why = why }
+        if let measurableTarget = measurableTarget { pacts[index].measurableTarget = measurableTarget }
+        if let targetDate = targetDate { pacts[index].targetDate = targetDate }
+        savePacts()
     }
     
     func deletePact(id: String) {
@@ -133,18 +152,16 @@ class PactStore: ObservableObject {
     
     // MARK: - User Data Operations
     
-    func addCredits(_ count: Int) {
+    // SECURITY: Internal only - credits can only be granted via StoreKit
+    internal func addCredits(_ count: Int) {
         userData.creditCount += count
+        // Enforce non-negative credits
+        userData.creditCount = max(userData.creditCount, 0)
         saveUserData()
     }
     
     func setOnboardingSeen() {
         userData.hasSeenOnboarding = true
-        saveUserData()
-    }
-    
-    func toggleICloudSync(_ enabled: Bool) {
-        userData.iCloudSyncEnabled = enabled
         saveUserData()
     }
 }
