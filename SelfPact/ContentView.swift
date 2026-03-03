@@ -11,6 +11,9 @@ struct ContentView: View {
     @StateObject private var pactStore = PactStore()
     @StateObject private var storeKitManager = StoreKitManager()
     @State private var selectedTab: Tab = .pacts
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @State private var showOnboarding = false
+    @State private var navigateToCreatePact = false
     
     enum Tab {
         case pacts
@@ -18,37 +21,68 @@ struct ContentView: View {
     }
     
     var body: some View {
-        TabView(selection: $selectedTab) {
-            // Pacts Tab
-            NavigationStack {
-                HomeView()
+        ZStack {
+            // Main app content
+            TabView(selection: $selectedTab) {
+                // Pacts Tab
+                NavigationStack {
+                    HomeView()
+                        .navigationDestination(isPresented: $navigateToCreatePact) {
+                            CreatePactView()
+                        }
+                }
+                .tabItem {
+                    Label("Pacts", systemImage: "shield.fill")
+                }
+                .tag(Tab.pacts)
+                
+                // Settings Tab
+                NavigationStack {
+                    SettingsView()
+                }
+                .tabItem {
+                    Label("Settings", systemImage: "gearshape.fill")
+                }
+                .tag(Tab.settings)
             }
-            .tabItem {
-                Label("Pacts", systemImage: "shield.fill")
+            .tint(AppColors.gold)
+            .environmentObject(pactStore)
+            .environmentObject(storeKitManager)
+            .preferredColorScheme(.dark)
+            .onAppear {
+                setupTabBarAppearance()
+                
+                // Show onboarding if not completed
+                if !hasCompletedOnboarding {
+                    showOnboarding = true
+                }
             }
-            .tag(Tab.pacts)
+            .task {
+                // Configure StoreKit with PactStore
+                storeKitManager.configure(with: pactStore)
+                // Check for pending transactions on app launch
+                await storeKitManager.checkPendingTransactions()
+            }
             
-            // Settings Tab
-            NavigationStack {
-                SettingsView()
+            // Onboarding overlay
+            if showOnboarding {
+                OnboardingView(isPresented: $showOnboarding)
+                    .environmentObject(pactStore)
+                    .environmentObject(storeKitManager)
+                    .transition(.opacity)
+                    .zIndex(1)
+                    .onChange(of: showOnboarding) { _, newValue in
+                        if !newValue {
+                            // Mark onboarding as completed
+                            hasCompletedOnboarding = true
+                            
+                            // Navigate to CreatePactView after short delay
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                navigateToCreatePact = true
+                            }
+                        }
+                    }
             }
-            .tabItem {
-                Label("Settings", systemImage: "gearshape.fill")
-            }
-            .tag(Tab.settings)
-        }
-        .tint(AppColors.gold)
-        .environmentObject(pactStore)
-        .environmentObject(storeKitManager)
-        .preferredColorScheme(.dark)
-        .onAppear {
-            setupTabBarAppearance()
-        }
-        .task {
-            // Configure StoreKit with PactStore
-            storeKitManager.configure(with: pactStore)
-            // Check for pending transactions on app launch
-            await storeKitManager.checkPendingTransactions()
         }
     }
     

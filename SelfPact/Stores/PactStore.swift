@@ -113,7 +113,6 @@ class PactStore: ObservableObject {
         
         // CRITICAL: Only allow editing draft pacts
         guard pacts[index].canModify else {
-            print("Cannot modify sealed or completed pact")
             return
         }
         

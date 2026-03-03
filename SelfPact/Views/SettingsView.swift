@@ -3,6 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var pactStore: PactStore
     @State private var showPurchase = false
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = true
+    @State private var showResetAlert = false
     
     var body: some View {
         ZStack {
@@ -29,6 +31,11 @@ struct SettingsView: View {
                     
                     // Info section
                     infoSection
+                    
+                    #if DEBUG
+                    // Debug section (only in debug builds)
+                    debugSection
+                    #endif
                 }
                 .padding(20)
                 .padding(.bottom, 60)
@@ -36,6 +43,14 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showPurchase) {
             PurchaseView()
+        }
+        .alert("Reset Onboarding?", isPresented: $showResetAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Reset", role: .destructive) {
+                hasCompletedOnboarding = false
+            }
+        } message: {
+            Text("The onboarding flow will show again on next app launch.")
         }
     }
     
@@ -234,6 +249,49 @@ struct SettingsView: View {
         .background(AppColors.surface)
         .cornerRadius(14)
     }
+    
+    // MARK: - Debug Section
+    
+    #if DEBUG
+    private var debugSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("DEBUG")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(AppColors.textTertiary)
+                .tracking(0.8)
+                .padding(.leading, 4)
+            
+            VStack(spacing: 0) {
+                Button {
+                    showResetAlert = true
+                } label: {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(AppColors.surfaceHighlight)
+                                .frame(width: 32, height: 32)
+                            
+                            Image(systemName: "arrow.counterclockwise.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(AppColors.textTertiary)
+                        }
+                        
+                        Text("Reset Onboarding")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(AppColors.textPrimary)
+                        
+                        Spacer()
+                    }
+                    .padding(14)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            .background(AppColors.surface)
+            .cornerRadius(14)
+        }
+        .padding(.bottom, 20)
+    }
+    #endif
     
     // MARK: - Helper Views
     
