@@ -39,6 +39,9 @@ class StoreKitManager: ObservableObject {
     @Published var products: [IAPProductModel] = []
     @Published var purchaseInProgress = false
     @Published var purchaseError: String?
+    @Published var restoreInProgress = false
+    @Published var restoreSuccess: Bool = false
+    @Published var restoredCredits: Int = 0
     
     private var pactStore: PactStore?
     private var transactionListener: Task<Void, Error>?
@@ -102,7 +105,6 @@ class StoreKitManager: ObservableObject {
             self.products.sort { $0.featured && !$1.featured }
             
         } catch {
-            print("Failed to load products: \(error)")
             purchaseError = "Failed to load products. Please try again."
         }
     }
@@ -142,7 +144,6 @@ class StoreKitManager: ObservableObject {
             }
             
         } catch {
-            print("Purchase failed: \(error)")
             purchaseError = "Purchase failed. Please try again."
             return false
         }
@@ -155,7 +156,6 @@ class StoreKitManager: ObservableObject {
         case .verified(let transaction):
             // Check if we've already processed this transaction
             guard !processedTransactionIDs.contains(transaction.id) else {
-                print("Transaction \(transaction.id) already processed, skipping duplicate.")
                 await transaction.finish()
                 return false
             }
@@ -168,8 +168,7 @@ class StoreKitManager: ObservableObject {
             
             return creditsAwarded
             
-        case .unverified(let transaction, let error):
-            print("Transaction \(transaction.id) failed verification: \(error)")
+        case .unverified(let transaction, _):
             purchaseError = "Transaction could not be verified."
             
             // Still finish unverified transactions to prevent pending state
@@ -182,13 +181,11 @@ class StoreKitManager: ObservableObject {
     
     private func grantCredits(for productID: String, transactionID: UInt64) async -> Bool {
         guard let iapProduct = IAPProduct(rawValue: productID) else {
-            print("Unknown product ID: \(productID)")
             return false
         }
         
         // CRITICAL: Ensure pactStore is configured
         guard let pactStore = pactStore else {
-            print("CRITICAL: PactStore not configured, cannot grant credits for transaction \(transactionID)")
             // DO NOT mark as processed - allow retry on next launch
             return false
         }
@@ -203,8 +200,6 @@ class StoreKitManager: ObservableObject {
         
         // Grant credits to store
         pactStore.addCredits(credits)
-        
-        print("Granted \(credits) credit(s) for \(productID), transaction: \(transactionID)")
         
         return true
     }
@@ -232,8 +227,7 @@ class StoreKitManager: ObservableObject {
             _ = await grantCredits(for: transaction.productID, transactionID: transaction.id)
             await transaction.finish()
             
-        case .unverified(let transaction, let error):
-            print("Unverified transaction update: \(error)")
+        case .unverified(let transaction, _):
             await transaction.finish()
         }
     }
@@ -259,18 +253,29 @@ class StoreKitManager: ObservableObject {
     // MARK: - Restore Purchases
     
     func restorePurchases() async {
-        // For consumables, we can only check for pending/unfinished transactions
-        // We cannot restore already-consumed credits
+        restoreInProgress = true
+        purchaseError = nil
+        restoreSuccess = false
+        restoredCredits = 0
         
-        var foundPending = false
+        defer {
+            restoreInProgress = false
+        }
         
-        for await result in Transaction.currentEntitlements {
+        // For consumables: Check Transaction.all for unprocessed transactions
+        // Note: We can only restore UNPROCESSED purchases, not consumed credits
+        var totalRestored = 0
+        
+        for await result in Transaction.all {
             switch result {
             case .verified(let transaction):
+                // Only process if not already processed
                 if !processedTransactionIDs.contains(transaction.id) {
-                    let success = await grantCredits(for: transaction.productID, transactionID: transaction.id)
-                    if success {
-                        foundPending = true
+                    if let credits = IAPProduct(rawValue: transaction.productID)?.credits {
+                        let success = await grantCredits(for: transaction.productID, transactionID: transaction.id)
+                        if success {
+                            totalRestored += credits
+                        }
                     }
                 }
                 await transaction.finish()
@@ -280,8 +285,11 @@ class StoreKitManager: ObservableObject {
             }
         }
         
-        if !foundPending {
-            purchaseError = "No previous purchases found. Consumable credits cannot be restored."
+        if totalRestored > 0 {
+            restoreSuccess = true
+            restoredCredits = totalRestored
+        } else {
+            purchaseError = "No unprocessed purchases to restore. Seal credits are consumed when used and cannot be restored after use."
         }
     }
     

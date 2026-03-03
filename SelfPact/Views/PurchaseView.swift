@@ -7,6 +7,7 @@ struct PurchaseView: View {
     
     @State private var selectedProduct: IAPProductModel?
     @State private var showSuccessAlert = false
+    @State private var showRestoreSuccessAlert = false
     @State private var showErrorAlert = false
     @State private var errorMessage = ""
     @State private var isLoadingProducts = true
@@ -21,6 +22,22 @@ struct PurchaseView: View {
                     ProgressView("Loading products...")
                         .tint(AppColors.gold)
                         .foregroundColor(AppColors.textSecondary)
+                } else if storeKit.products.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 48))
+                            .foregroundColor(AppColors.gold)
+                        
+                        Text("No Products Available")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(AppColors.textPrimary)
+                        
+                        Text("Enable StoreKit Configuration in Xcode scheme for simulator testing.")
+                            .font(.system(size: 14))
+                            .foregroundColor(AppColors.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                    }
                 } else {
                     ScrollView {
                         VStack(spacing: 0) {
@@ -60,6 +77,13 @@ struct PurchaseView: View {
                 Text("\(product.credits) seal credit\(product.credits > 1 ? "s" : "") added to your account.")
             }
         }
+        .alert("Restored!", isPresented: $showRestoreSuccessAlert) {
+            Button("OK") {
+                dismiss()
+            }
+        } message: {
+            Text("\(storeKit.restoredCredits) seal credit\(storeKit.restoredCredits > 1 ? "s" : "") restored to your account.")
+        }
         .alert("Error", isPresented: $showErrorAlert) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -94,7 +118,9 @@ struct PurchaseView: View {
     private func restorePurchases() async {
         await storeKit.restorePurchases()
         
-        if let error = storeKit.purchaseError {
+        if storeKit.restoreSuccess {
+            showRestoreSuccessAlert = true
+        } else if let error = storeKit.purchaseError {
             errorMessage = error
             showErrorAlert = true
         }
@@ -276,20 +302,31 @@ struct PurchaseView: View {
                 await restorePurchases()
             }
         } label: {
-            Text("Restore Purchases")
-                .font(.system(size: 13))
-                .foregroundColor(AppColors.textTertiary)
-                .underline()
+            if storeKit.restoreInProgress {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                        .tint(AppColors.textTertiary)
+                    Text("Restoring...")
+                        .font(.system(size: 13))
+                        .foregroundColor(AppColors.textTertiary)
+                }
+            } else {
+                Text("Restore Purchases")
+                    .font(.system(size: 13))
+                    .foregroundColor(AppColors.textTertiary)
+                    .underline()
+            }
         }
         .buttonStyle(.plain)
-        .disabled(storeKit.purchaseInProgress)
+        .disabled(storeKit.purchaseInProgress || storeKit.restoreInProgress)
         .padding(.bottom, 16)
     }
     
     // MARK: - Disclaimer
     
     private var disclaimer: some View {
-        Text("Seal credits are consumable. Used credits cannot be refunded. Deleting a sealed pact does not restore your credit.")
+        Text("Seal credits are consumable. Restore only recovers unprocessed purchases. Used credits cannot be refunded or restored.")
             .font(.system(size: 11))
             .foregroundColor(AppColors.textMuted)
             .multilineTextAlignment(.center)
@@ -352,4 +389,5 @@ struct BadgeShape: Shape {
 #Preview {
     PurchaseView()
         .environmentObject(PactStore())
+        .environmentObject(StoreKitManager())
 }
