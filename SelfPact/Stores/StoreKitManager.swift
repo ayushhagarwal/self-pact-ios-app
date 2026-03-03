@@ -1,0 +1,353 @@
+import Foundation
+import StoreKit
+import Combine
+
+// MARK: - IAP Product IDs
+enum IAPProduct: String, CaseIterable {
+    case oneSeal = "com.selfpact.1seal"
+    case fiveSeals = "com.selfpact.5seals"
+    
+    var credits: Int {
+        switch self {
+        case .oneSeal: return 1
+        case .fiveSeals: return 5
+        }
+    }
+}
+
+// MARK: - Product Model for UI
+struct IAPProductModel: Identifiable {
+    let id: String
+    let product: Product
+    let displayTitle: String
+    let displayDescription: String
+    let badge: String?
+    let featured: Bool
+    
+    var credits: Int {
+        IAPProduct(rawValue: id)?.credits ?? 0
+    }
+    
+    var formattedPrice: String {
+        product.displayPrice
+    }
+}
+
+// MARK: - StoreKit Manager
+@MainActor
+class StoreKitManager: ObservableObject {
+    @Published var products: [IAPProductModel] = []
+    @Published var purchaseInProgress = false
+    @Published var purchaseError: String?
+    
+    private var pactStore: PactStore?
+    private var transactionListener: Task<Void, Error>?
+    private var processedTransactionIDs: Set<UInt64> = []
+    
+    private let processedKey = "selfpact_processed_transactions"
+    
+    init() {
+        loadProcessedTransactions()
+        startTransactionListener()
+        setupiCloudObserver()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+        transactionListener?.cancel()
+    }
+    
+    // MARK: - Setup
+    
+    func configure(with pactStore: PactStore) {
+        self.pactStore = pactStore
+    }
+    
+    // MARK: - Load Products
+    
+    func loadProducts() async {
+        do {
+            let productIDs = IAPProduct.allCases.map { $0.rawValue }
+            let storeProducts = try await Product.products(for: productIDs)
+            
+            // Map to display models with UI metadata
+            self.products = storeProducts.compactMap { product -> IAPProductModel? in
+                let productID = product.id
+                
+                switch productID {
+                case IAPProduct.oneSeal.rawValue:
+                    return IAPProductModel(
+                        id: productID,
+                        product: product,
+                        displayTitle: "1 Seal Credit",
+                        displayDescription: "Seal one commitment contract.",
+                        badge: nil,
+                        featured: false
+                    )
+                    
+                case IAPProduct.fiveSeals.rawValue:
+                    return IAPProductModel(
+                        id: productID,
+                        product: product,
+                        displayTitle: "5 Seal Credits",
+                        displayDescription: "Best value — seal five pacts.",
+                        badge: "Save 50%",
+                        featured: true
+                    )
+                    
+                default:
+                    return nil
+                }
+            }
+            
+            // Sort to ensure 5-pack appears first (featured)
+            self.products.sort { $0.featured && !$1.featured }
+            
+        } catch {
+            print("Failed to load products: \(error)")
+            purchaseError = "Failed to load products. Please try again."
+        }
+    }
+    
+    // MARK: - Purchase
+    
+    func purchase(_ productModel: IAPProductModel) async -> Bool {
+        guard !purchaseInProgress else { return false }
+        
+        purchaseInProgress = true
+        purchaseError = nil
+        
+        defer {
+            purchaseInProgress = false
+        }
+        
+        do {
+            let result = try await productModel.product.purchase()
+            
+            switch result {
+            case .success(let verification):
+                // Verify and process the transaction
+                let processed = await handleVerification(verification, productID: productModel.id)
+                return processed
+                
+            case .userCancelled:
+                purchaseError = nil // User cancelled is not an error
+                return false
+                
+            case .pending:
+                purchaseError = "Purchase is pending approval."
+                return false
+                
+            @unknown default:
+                purchaseError = "Unknown purchase result."
+                return false
+            }
+            
+        } catch {
+            print("Purchase failed: \(error)")
+            purchaseError = "Purchase failed. Please try again."
+            return false
+        }
+    }
+    
+    // MARK: - Transaction Verification
+    
+    private func handleVerification(_ verification: VerificationResult<Transaction>, productID: String) async -> Bool {
+        switch verification {
+        case .verified(let transaction):
+            // Check if we've already processed this transaction
+            guard !processedTransactionIDs.contains(transaction.id) else {
+                print("Transaction \(transaction.id) already processed, skipping duplicate.")
+                await transaction.finish()
+                return false
+            }
+            
+            // Grant credits based on product ID
+            let creditsAwarded = await grantCredits(for: productID, transactionID: transaction.id)
+            
+            // Finish the transaction
+            await transaction.finish()
+            
+            return creditsAwarded
+            
+        case .unverified(let transaction, let error):
+            print("Transaction \(transaction.id) failed verification: \(error)")
+            purchaseError = "Transaction could not be verified."
+            
+            // Still finish unverified transactions to prevent pending state
+            await transaction.finish()
+            return false
+        }
+    }
+    
+    // MARK: - Grant Credits
+    
+    private func grantCredits(for productID: String, transactionID: UInt64) async -> Bool {
+        guard let iapProduct = IAPProduct(rawValue: productID) else {
+            print("Unknown product ID: \(productID)")
+            return false
+        }
+        
+        // CRITICAL: Ensure pactStore is configured
+        guard let pactStore = pactStore else {
+            print("CRITICAL: PactStore not configured, cannot grant credits for transaction \(transactionID)")
+            // DO NOT mark as processed - allow retry on next launch
+            return false
+        }
+        
+        let credits = iapProduct.credits
+        
+        // IMPORTANT: Mark as processed FIRST to prevent race condition
+        // If app crashes after this but before credit grant, we prefer
+        // losing credits over granting duplicates (Apple's recommendation)
+        processedTransactionIDs.insert(transactionID)
+        saveProcessedTransactions()
+        
+        // Grant credits to store
+        pactStore.addCredits(credits)
+        
+        print("Granted \(credits) credit(s) for \(productID), transaction: \(transactionID)")
+        
+        return true
+    }
+    
+    // MARK: - Transaction Listener
+    
+    private func startTransactionListener() {
+        transactionListener = Task.detached { [weak self] in
+            for await result in Transaction.updates {
+                await self?.handleTransactionUpdate(result)
+            }
+        }
+    }
+    
+    private func handleTransactionUpdate(_ result: VerificationResult<Transaction>) async {
+        switch result {
+        case .verified(let transaction):
+            // Check if already processed
+            guard !processedTransactionIDs.contains(transaction.id) else {
+                await transaction.finish()
+                return
+            }
+            
+            // Process the transaction
+            _ = await grantCredits(for: transaction.productID, transactionID: transaction.id)
+            await transaction.finish()
+            
+        case .unverified(let transaction, let error):
+            print("Unverified transaction update: \(error)")
+            await transaction.finish()
+        }
+    }
+    
+    // MARK: - Pending Transactions
+    
+    func checkPendingTransactions() async {
+        // Check for unfinished transactions on app launch
+        for await result in Transaction.currentEntitlements {
+            switch result {
+            case .verified(let transaction):
+                if !processedTransactionIDs.contains(transaction.id) {
+                    _ = await grantCredits(for: transaction.productID, transactionID: transaction.id)
+                }
+                await transaction.finish()
+                
+            case .unverified(let transaction, _):
+                await transaction.finish()
+            }
+        }
+    }
+    
+    // MARK: - Restore Purchases
+    
+    func restorePurchases() async {
+        // For consumables, we can only check for pending/unfinished transactions
+        // We cannot restore already-consumed credits
+        
+        var foundPending = false
+        
+        for await result in Transaction.currentEntitlements {
+            switch result {
+            case .verified(let transaction):
+                if !processedTransactionIDs.contains(transaction.id) {
+                    let success = await grantCredits(for: transaction.productID, transactionID: transaction.id)
+                    if success {
+                        foundPending = true
+                    }
+                }
+                await transaction.finish()
+                
+            case .unverified(let transaction, _):
+                await transaction.finish()
+            }
+        }
+        
+        if !foundPending {
+            purchaseError = "No previous purchases found. Consumable credits cannot be restored."
+        }
+    }
+    
+    // MARK: - Processed Transactions Persistence
+    
+    private func loadProcessedTransactions() {
+        if let data = UserDefaults.standard.data(forKey: processedKey),
+           let ids = try? JSONDecoder().decode([UInt64].self, from: data) {
+            processedTransactionIDs = Set(ids)
+        }
+        
+        // Load from iCloud only if user enabled sync
+        if pactStore?.userData.iCloudSyncEnabled == true {
+            if let ubiquitousStore = NSUbiquitousKeyValueStore.default.data(forKey: processedKey),
+               let cloudIds = try? JSONDecoder().decode([UInt64].self, from: ubiquitousStore) {
+                processedTransactionIDs.formUnion(cloudIds)
+                // Sync back to UserDefaults
+                saveProcessedTransactions()
+            }
+        }
+    }
+    
+    private func saveProcessedTransactions() {
+        let ids = Array(processedTransactionIDs)
+        if let data = try? JSONEncoder().encode(ids) {
+            // Save locally
+            UserDefaults.standard.set(data, forKey: processedKey)
+            
+            // Save to iCloud only if user enabled sync
+            if pactStore?.userData.iCloudSyncEnabled == true {
+                NSUbiquitousKeyValueStore.default.set(data, forKey: processedKey)
+                NSUbiquitousKeyValueStore.default.synchronize()
+            }
+        }
+    }
+    
+    // MARK: - Sync Processed Transactions
+    
+    func syncProcessedTransactions() {
+        // Only sync if user enabled iCloud
+        guard pactStore?.userData.iCloudSyncEnabled == true else { return }
+        
+        // Pull latest from iCloud and merge
+        if let cloudData = NSUbiquitousKeyValueStore.default.data(forKey: processedKey),
+           let cloudIds = try? JSONDecoder().decode([UInt64].self, from: cloudData) {
+            processedTransactionIDs.formUnion(cloudIds)
+            saveProcessedTransactions()
+        }
+    }
+    
+    // MARK: - iCloud Observer
+    
+    private func setupiCloudObserver() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(iCloudStoreDidChange),
+            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
+            object: NSUbiquitousKeyValueStore.default
+        )
+    }
+    
+    @objc private func iCloudStoreDidChange(_ notification: Notification) {
+        Task { @MainActor in
+            syncProcessedTransactions()
+        }
+    }
+}

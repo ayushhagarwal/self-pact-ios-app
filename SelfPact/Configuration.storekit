@@ -1,0 +1,50 @@
+{
+  "identifier" : "B5E7F24A",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "6738473738",
+      "localizations" : [
+        {
+          "description" : "Seal one commitment contract.",
+          "displayName" : "1 Seal Credit",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.selfpact.1seal",
+      "referenceName" : "1 Seal Credit",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "24.99",
+      "familyShareable" : false,
+      "internalID" : "6738473739",
+      "localizations" : [
+        {
+          "description" : "Best value — seal five pacts.",
+          "displayName" : "5 Seal Credits",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.selfpact.5seals",
+      "referenceName" : "5 Seal Credits",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6738473740",
+    "_developerTeamID" : "YOUR_TEAM_ID",
+    "_lastSynchronizedDate" : 741830400.0
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}
