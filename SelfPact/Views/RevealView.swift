@@ -8,6 +8,10 @@ enum RevealPhase {
     case complete
 }
 
+// SECURITY NOTE: Reveal timing depends on device time (pact.targetDate vs Date())
+// This is intentional for v1.0 simplicity. Users with jailbroken devices or manipulated
+// system time can reveal early. For v1.1+, consider server-side validation if this
+// becomes a concern. Current design prioritizes offline functionality and user trust.
 struct RevealView: View {
     let pactId: String
     

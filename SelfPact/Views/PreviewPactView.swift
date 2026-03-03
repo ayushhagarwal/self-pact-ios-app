@@ -8,6 +8,7 @@ struct PreviewPactView: View {
     @EnvironmentObject var pactStore: PactStore
     
     @State private var showSealAnimation = false
+    @State private var isSealingInProgress = false
     
     private var pact: Pact? {
         pactStore.getPact(id: pactId)
@@ -230,6 +231,8 @@ struct PreviewPactView: View {
                 .shadow(color: AppColors.gold.opacity(0.25), radius: 10, x: 0, y: 4)
             }
             .buttonStyle(.plain)
+            .disabled(isSealingInProgress || (!hasCredits))
+            .opacity(isSealingInProgress ? 0.6 : 1.0)
         }
     }
     
@@ -278,16 +281,22 @@ struct PreviewPactView: View {
     }
     
     // MARK: - Actions
-    
+    // SECURITY: Double-tap protection to prevent negative credits
     private func handleSeal() {
+        guard !isSealingInProgress else { return }
         guard hasCredits else {
             // Navigate to purchase
             return
         }
         
+        isSealingInProgress = true
+        
         let success = pactStore.sealPact(id: pactId)
         if success {
             showSealAnimation = true
+            // isSealingInProgress will reset when animation completes and view dismisses
+        } else {
+            isSealingInProgress = false
         }
     }
 }

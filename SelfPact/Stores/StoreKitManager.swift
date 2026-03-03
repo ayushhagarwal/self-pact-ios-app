@@ -49,11 +49,9 @@ class StoreKitManager: ObservableObject {
     init() {
         loadProcessedTransactions()
         startTransactionListener()
-        setupiCloudObserver()
     }
     
     deinit {
-        NotificationCenter.default.removeObserver(self)
         transactionListener?.cancel()
     }
     
@@ -288,66 +286,19 @@ class StoreKitManager: ObservableObject {
     }
     
     // MARK: - Processed Transactions Persistence
+    // NOTE: Stored locally only. No cloud sync to ensure transaction privacy.
     
     private func loadProcessedTransactions() {
         if let data = UserDefaults.standard.data(forKey: processedKey),
            let ids = try? JSONDecoder().decode([UInt64].self, from: data) {
             processedTransactionIDs = Set(ids)
         }
-        
-        // Load from iCloud only if user enabled sync
-        if pactStore?.userData.iCloudSyncEnabled == true {
-            if let ubiquitousStore = NSUbiquitousKeyValueStore.default.data(forKey: processedKey),
-               let cloudIds = try? JSONDecoder().decode([UInt64].self, from: ubiquitousStore) {
-                processedTransactionIDs.formUnion(cloudIds)
-                // Sync back to UserDefaults
-                saveProcessedTransactions()
-            }
-        }
     }
     
     private func saveProcessedTransactions() {
         let ids = Array(processedTransactionIDs)
         if let data = try? JSONEncoder().encode(ids) {
-            // Save locally
             UserDefaults.standard.set(data, forKey: processedKey)
-            
-            // Save to iCloud only if user enabled sync
-            if pactStore?.userData.iCloudSyncEnabled == true {
-                NSUbiquitousKeyValueStore.default.set(data, forKey: processedKey)
-                NSUbiquitousKeyValueStore.default.synchronize()
-            }
-        }
-    }
-    
-    // MARK: - Sync Processed Transactions
-    
-    func syncProcessedTransactions() {
-        // Only sync if user enabled iCloud
-        guard pactStore?.userData.iCloudSyncEnabled == true else { return }
-        
-        // Pull latest from iCloud and merge
-        if let cloudData = NSUbiquitousKeyValueStore.default.data(forKey: processedKey),
-           let cloudIds = try? JSONDecoder().decode([UInt64].self, from: cloudData) {
-            processedTransactionIDs.formUnion(cloudIds)
-            saveProcessedTransactions()
-        }
-    }
-    
-    // MARK: - iCloud Observer
-    
-    private func setupiCloudObserver() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(iCloudStoreDidChange),
-            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: NSUbiquitousKeyValueStore.default
-        )
-    }
-    
-    @objc private func iCloudStoreDidChange(_ notification: Notification) {
-        Task { @MainActor in
-            syncProcessedTransactions()
         }
     }
 }
