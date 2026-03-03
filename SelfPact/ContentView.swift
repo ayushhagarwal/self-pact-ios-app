@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var pactStore = PactStore()
+    @StateObject private var storeKitManager = StoreKitManager()
     @State private var selectedTab: Tab = .pacts
     
     enum Tab {
@@ -38,9 +39,16 @@ struct ContentView: View {
         }
         .tint(AppColors.gold)
         .environmentObject(pactStore)
+        .environmentObject(storeKitManager)
         .preferredColorScheme(.dark)
         .onAppear {
             setupTabBarAppearance()
+        }
+        .task {
+            // Configure StoreKit with PactStore
+            storeKitManager.configure(with: pactStore)
+            // Check for pending transactions on app launch
+            await storeKitManager.checkPendingTransactions()
         }
     }
     

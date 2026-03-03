@@ -1,42 +1,15 @@
 import SwiftUI
 
-struct Product: Identifiable {
-    let id: String
-    let title: String
-    let price: String
-    let credits: Int
-    let description: String
-    var badge: String?
-    var featured: Bool = false
-}
-
 struct PurchaseView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var pactStore: PactStore
+    @EnvironmentObject var storeKit: StoreKitManager
     
-    @State private var showPurchaseAlert = false
-    @State private var selectedProduct: Product?
-    @State private var showRestoreAlert = false
+    @State private var selectedProduct: IAPProductModel?
     @State private var showSuccessAlert = false
-    
-    private let products: [Product] = [
-        Product(
-            id: "selfpact.seal.single",
-            title: "1 Seal Credit",
-            price: "$9.99",
-            credits: 1,
-            description: "Seal one commitment contract."
-        ),
-        Product(
-            id: "selfpact.seal.pack5",
-            title: "5 Seal Credits",
-            price: "$24.99",
-            credits: 5,
-            description: "Best value — seal five pacts.",
-            badge: "Save 50%",
-            featured: true
-        )
-    ]
+    @State private var showErrorAlert = false
+    @State private var errorMessage = ""
+    @State private var isLoadingProducts = true
     
     var body: some View {
         NavigationStack {
@@ -44,22 +17,28 @@ struct PurchaseView: View {
                 AppColors.backgroundGradient
                     .ignoresSafeArea()
                 
-                ScrollView {
-                    VStack(spacing: 0) {
-                        // Header section
-                        headerSection
-                        
-                        // Products
-                        productsSection
-                        
-                        // Restore button
-                        restoreButton
-                        
-                        // Disclaimer
-                        disclaimer
+                if isLoadingProducts {
+                    ProgressView("Loading products...")
+                        .tint(AppColors.gold)
+                        .foregroundColor(AppColors.textSecondary)
+                } else {
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            // Header section
+                            headerSection
+                            
+                            // Products
+                            productsSection
+                            
+                            // Restore button
+                            restoreButton
+                            
+                            // Disclaimer
+                            disclaimer
+                        }
+                        .padding(22)
+                        .padding(.bottom, 60)
                     }
-                    .padding(22)
-                    .padding(.bottom, 60)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -68,33 +47,56 @@ struct PurchaseView: View {
                     closeButton
                 }
             }
-        }
-        .alert("Purchase", isPresented: $showPurchaseAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Simulate Purchase") {
-                if let product = selectedProduct {
-                    pactStore.addCredits(product.credits)
-                    showSuccessAlert = true
-                }
-            }
-        } message: {
-            if let product = selectedProduct {
-                Text("This would initiate a StoreKit 2 purchase for \(product.title). For now, credits will be added for testing.")
+            .task {
+                await loadProducts()
             }
         }
-        .alert("Success", isPresented: $showSuccessAlert) {
+        .alert("Success!", isPresented: $showSuccessAlert) {
             Button("OK") {
                 dismiss()
             }
         } message: {
             if let product = selectedProduct {
-                Text("\(product.credits) seal credit\(product.credits > 1 ? "s" : "") added.")
+                Text("\(product.credits) seal credit\(product.credits > 1 ? "s" : "") added to your account.")
             }
         }
-        .alert("Restore", isPresented: $showRestoreAlert) {
+        .alert("Error", isPresented: $showErrorAlert) {
             Button("OK", role: .cancel) { }
         } message: {
-            Text("No previous purchases found. Consumable credits cannot be restored.")
+            Text(errorMessage)
+        }
+    }
+    
+    // MARK: - Load Products
+    
+    private func loadProducts() async {
+        await storeKit.loadProducts()
+        isLoadingProducts = false
+    }
+    
+    // MARK: - Purchase Product
+    
+    private func purchaseProduct(_ product: IAPProductModel) async {
+        selectedProduct = product
+        
+        let success = await storeKit.purchase(product)
+        
+        if success {
+            showSuccessAlert = true
+        } else if let error = storeKit.purchaseError {
+            errorMessage = error
+            showErrorAlert = true
+        }
+    }
+    
+    // MARK: - Restore Purchases
+    
+    private func restorePurchases() async {
+        await storeKit.restorePurchases()
+        
+        if let error = storeKit.purchaseError {
+            errorMessage = error
+            showErrorAlert = true
         }
     }
     
@@ -175,8 +177,8 @@ struct PurchaseView: View {
     
     private var productsSection: some View {
         VStack(spacing: 14) {
-            // Featured product first (5-pack)
-            ForEach(products.sorted(by: { $0.featured && !$1.featured })) { product in
+            // Products are already sorted by featured status
+            ForEach(storeKit.products) { product in
                 productCard(product: product)
                 
                 // Add "Most people choose 5" text after 5-pack
@@ -198,19 +200,20 @@ struct PurchaseView: View {
         .padding(.bottom, 28)
     }
     
-    private func productCard(product: Product) -> some View {
+    private func productCard(product: IAPProductModel) -> some View {
         Button {
-            selectedProduct = product
-            showPurchaseAlert = true
+            Task {
+                await purchaseProduct(product)
+            }
         } label: {
             HStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(product.title)
+                    Text(product.displayTitle)
                         .font(.system(size: 18, weight: .bold))
                         .foregroundColor(AppColors.textPrimary)
                         .tracking(-0.4)
                     
-                    Text(product.description)
+                    Text(product.displayDescription)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(AppColors.textSecondary)
                         .tracking(-0.1)
@@ -218,10 +221,15 @@ struct PurchaseView: View {
                 
                 Spacer()
                 
-                Text(product.price)
-                    .font(.system(size: 24, weight: .heavy))
-                    .foregroundColor(product.featured ? AppColors.gold : AppColors.textPrimary)
-                    .tracking(-1.0)
+                if storeKit.purchaseInProgress && selectedProduct?.id == product.id {
+                    ProgressView()
+                        .tint(product.featured ? AppColors.gold : AppColors.textPrimary)
+                } else {
+                    Text(product.formattedPrice)
+                        .font(.system(size: 24, weight: .heavy))
+                        .foregroundColor(product.featured ? AppColors.gold : AppColors.textPrimary)
+                        .tracking(-1.0)
+                }
             }
             .padding(22)
             .background(
@@ -257,13 +265,16 @@ struct PurchaseView: View {
             .scaleEffect(product.featured ? 1.02 : 1)
         }
         .buttonStyle(.plain)
+        .disabled(storeKit.purchaseInProgress)
     }
     
     // MARK: - Restore Button
     
     private var restoreButton: some View {
         Button {
-            showRestoreAlert = true
+            Task {
+                await restorePurchases()
+            }
         } label: {
             Text("Restore Purchases")
                 .font(.system(size: 13))
@@ -271,6 +282,7 @@ struct PurchaseView: View {
                 .underline()
         }
         .buttonStyle(.plain)
+        .disabled(storeKit.purchaseInProgress)
         .padding(.bottom, 16)
     }
     
