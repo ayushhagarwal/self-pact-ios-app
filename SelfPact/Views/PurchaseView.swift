@@ -5,6 +5,8 @@ struct PurchaseView: View {
     @EnvironmentObject var pactStore: PactStore
     @EnvironmentObject var storeKit: StoreKitManager
     
+    var onPurchaseComplete: (() -> Void)? = nil
+    
     @State private var selectedProduct: IAPProductModel?
     @State private var showSuccessAlert = false
     @State private var showRestoreSuccessAlert = false
@@ -71,6 +73,7 @@ struct PurchaseView: View {
         .alert("Success!", isPresented: $showSuccessAlert) {
             Button("OK") {
                 dismiss()
+                onPurchaseComplete?()
             }
         } message: {
             if let product = selectedProduct {
@@ -80,6 +83,7 @@ struct PurchaseView: View {
         .alert("Restored!", isPresented: $showRestoreSuccessAlert) {
             Button("OK") {
                 dismiss()
+                onPurchaseComplete?()
             }
         } message: {
             Text("\(storeKit.restoredCredits) seal credit\(storeKit.restoredCredits > 1 ? "s" : "") restored to your account.")

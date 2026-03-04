@@ -70,7 +70,10 @@ struct OnboardingView: View {
         }
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showPurchase) {
-            PurchaseView()
+            PurchaseView(onPurchaseComplete: {
+                // Dismiss onboarding after successful purchase
+                isPresented = false
+            })
         }
     }
 }
