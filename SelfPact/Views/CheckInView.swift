@@ -40,8 +40,8 @@ struct CheckInView: View {
             dismiss()
         } label: {
             ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(AppColors.surface)
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(AppColors.backgroundElevated)
                     .frame(width: 34, height: 34)
                 
                 Image(systemName: "xmark")
@@ -78,13 +78,13 @@ struct CheckInView: View {
     private func headerArea(pact: Pact) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(AppColors.indigoGlow)
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(AppColors.accentGlow)
                     .frame(width: 44, height: 44)
                 
                 Image(systemName: "chart.line.uptrend.xyaxis")
                     .font(.system(size: 18))
-                    .foregroundColor(AppColors.indigo)
+                    .foregroundColor(AppColors.accent)
             }
             .padding(.bottom, 16)
             
@@ -107,11 +107,11 @@ struct CheckInView: View {
         VStack(spacing: 0) {
             Text("\(progress)%")
                 .font(.system(size: 40, weight: .bold))
-                .foregroundColor(AppColors.gold)
+                .foregroundColor(AppColors.accent)
                 .tracking(-1)
                 .padding(.bottom, 16)
             
-            ProgressBar(progress: Double(progress), height: 6, color: AppColors.gold)
+            ProgressBar(progress: Double(progress), height: 6, color: AppColors.accent)
             
             // Quick buttons
             HStack(spacing: 6) {
@@ -123,14 +123,14 @@ struct CheckInView: View {
                     } label: {
                         Text("\(value)%")
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(progress == value ? AppColors.gold : AppColors.textMuted)
+                            .foregroundColor(progress == value ? AppColors.accent : AppColors.textSecondary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
-                            .background(progress == value ? AppColors.goldGlowStrong : AppColors.surfaceHighlight)
-                            .cornerRadius(10)
+                            .background(progress == value ? AppColors.accentGlowStrong : AppColors.backgroundElevated)
+                            .cornerRadius(16)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(progress == value ? AppColors.goldMuted : Color.clear, lineWidth: 1)
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(progress == value ? AppColors.accentLight.opacity(0.7) : AppColors.border, lineWidth: 1)
                             )
                     }
                     .buttonStyle(.plain)
@@ -139,8 +139,8 @@ struct CheckInView: View {
             .padding(.top, 18)
         }
         .padding(20)
-        .background(AppColors.surface)
-        .cornerRadius(16)
+        .background(AppColors.backgroundElevated)
+        .cornerRadius(18)
         .padding(.bottom, 28)
     }
     
@@ -175,10 +175,10 @@ struct CheckInView: View {
                         .allowsHitTesting(false)
                 }
             }
-            .background(AppColors.surface)
-            .cornerRadius(12)
+            .background(AppColors.backgroundElevated)
+            .cornerRadius(16)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 16)
                     .stroke(AppColors.border, lineWidth: 1)
             )
         }
@@ -197,9 +197,9 @@ struct CheckInView: View {
                 .tracking(-0.2)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
-                .background(AppColors.indigo)
-                .cornerRadius(14)
-                .shadow(color: AppColors.indigo.opacity(0.2), radius: 8, x: 0, y: 4)
+                .background(AppColors.accentStrong)
+                .cornerRadius(16)
+                .shadow(color: AppColors.accent.opacity(0.14), radius: 8, x: 0, y: 4)
         }
         .buttonStyle(.plain)
     }
@@ -207,7 +207,7 @@ struct CheckInView: View {
     // MARK: - Not Found View
     
     private var notFoundView: some View {
-        Text("Pact not found.")
+        Text("Goal not found.")
             .font(.system(size: 16))
             .foregroundColor(AppColors.textSecondary)
     }

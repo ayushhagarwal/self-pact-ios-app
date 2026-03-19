@@ -32,7 +32,7 @@ struct ContentView: View {
                         }
                 }
                 .tabItem {
-                    Label("Pacts", systemImage: "shield.fill")
+                    Label("Goals", systemImage: "shield.fill")
                 }
                 .tag(Tab.pacts)
                 
@@ -45,10 +45,9 @@ struct ContentView: View {
                 }
                 .tag(Tab.settings)
             }
-            .tint(AppColors.gold)
+            .tint(AppColors.accent)
             .environmentObject(pactStore)
             .environmentObject(storeKitManager)
-            .preferredColorScheme(.dark)
             .onAppear {
                 setupTabBarAppearance()
                 
@@ -89,19 +88,20 @@ struct ContentView: View {
     private func setupTabBarAppearance() {
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor(AppColors.backgroundElevated)
+        appearance.backgroundColor = UIColor(AppColors.background)
+        appearance.shadowColor = UIColor(AppColors.border)
         
         // Unselected color
-        appearance.stackedLayoutAppearance.normal.iconColor = UIColor(AppColors.textMuted)
+        appearance.stackedLayoutAppearance.normal.iconColor = UIColor(AppColors.textSecondary)
         appearance.stackedLayoutAppearance.normal.titleTextAttributes = [
-            .foregroundColor: UIColor(AppColors.textMuted),
+            .foregroundColor: UIColor(AppColors.textSecondary),
             .font: UIFont.systemFont(ofSize: 11, weight: .semibold)
         ]
         
         // Selected color
-        appearance.stackedLayoutAppearance.selected.iconColor = UIColor(AppColors.gold)
+        appearance.stackedLayoutAppearance.selected.iconColor = UIColor(AppColors.accent)
         appearance.stackedLayoutAppearance.selected.titleTextAttributes = [
-            .foregroundColor: UIColor(AppColors.gold),
+            .foregroundColor: UIColor(AppColors.accent),
             .font: UIFont.systemFont(ofSize: 11, weight: .semibold)
         ]
         

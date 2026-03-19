@@ -53,7 +53,7 @@ struct SettingsView: View {
                 HStack(alignment: .top, spacing: 12) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(AppColors.surfaceHighlight)
+                            .fill(AppColors.backgroundElevated)
                             .frame(width: 32, height: 32)
                         
                         Image(systemName: "internaldrive.fill")
@@ -77,8 +77,8 @@ struct SettingsView: View {
                 }
                 .padding(14)
             }
-            .background(AppColors.surface)
-            .cornerRadius(14)
+            .background(AppColors.backgroundElevated)
+            .cornerRadius(16)
         }
         .padding(.bottom, 20)
     }
@@ -87,31 +87,31 @@ struct SettingsView: View {
     
     private var creditsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("CREDITS")
+            Text("COMMITMENTS")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(AppColors.textTertiary)
                 .tracking(0.8)
                 .padding(.leading, 4)
             
             VStack(spacing: 0) {
-                // Seals available
+                // Commitments available
                 HStack(spacing: 12) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(AppColors.goldGlow)
+                            .fill(AppColors.accentGlow)
                             .frame(width: 32, height: 32)
                         
                         Image(systemName: "shield.fill")
                             .font(.system(size: 14))
-                            .foregroundColor(AppColors.gold)
+                            .foregroundColor(AppColors.accent)
                     }
                     
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("Seals Available")
+                        Text("Commitments Available")
                             .font(.system(size: 15, weight: .medium))
                             .foregroundColor(AppColors.textPrimary)
                         
-                        Text("\(pactStore.userData.creditCount) credit\(pactStore.userData.creditCount != 1 ? "s" : "")")
+                        Text("\(pactStore.userData.creditCount) commitment\(pactStore.userData.creditCount != 1 ? "s" : "")")
                             .font(.system(size: 12))
                             .foregroundColor(AppColors.textTertiary)
                     }
@@ -131,15 +131,15 @@ struct SettingsView: View {
                     HStack(spacing: 12) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 8)
-                                .fill(AppColors.goldGlow)
+                                .fill(AppColors.accentGlow)
                                 .frame(width: 32, height: 32)
                             
                             Image(systemName: "shield.fill")
                                 .font(.system(size: 14))
-                                .foregroundColor(AppColors.gold)
+                                .foregroundColor(AppColors.accent)
                         }
                         
-                        Text("Buy More Seals")
+                        Text("Get More Commitments")
                             .font(.system(size: 15, weight: .medium))
                             .foregroundColor(AppColors.textPrimary)
                         
@@ -153,8 +153,8 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
             }
-            .background(AppColors.surface)
-            .cornerRadius(14)
+            .background(AppColors.backgroundElevated)
+            .cornerRadius(16)
         }
         .padding(.bottom, 20)
     }
@@ -186,8 +186,8 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
             }
-            .background(AppColors.surface)
-            .cornerRadius(14)
+            .background(AppColors.backgroundElevated)
+            .cornerRadius(16)
         }
         .padding(.bottom, 24)
     }
@@ -199,7 +199,7 @@ struct SettingsView: View {
             HStack(spacing: 12) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(AppColors.surfaceHighlight)
+                        .fill(AppColors.backgroundElevated)
                         .frame(width: 32, height: 32)
                     
                     Image(systemName: "info.circle.fill")
@@ -214,15 +214,15 @@ struct SettingsView: View {
                     
                     Text("This app collects no data.")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(AppColors.gold)
+                        .foregroundColor(AppColors.accent)
                 }
                 
                 Spacer()
             }
             .padding(14)
         }
-        .background(AppColors.surface)
-        .cornerRadius(14)
+        .background(AppColors.backgroundElevated)
+        .cornerRadius(16)
     }
     
     // MARK: - Helper Views
@@ -231,7 +231,7 @@ struct SettingsView: View {
         HStack(spacing: 12) {
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(AppColors.surfaceHighlight)
+                    .fill(AppColors.backgroundElevated)
                     .frame(width: 32, height: 32)
                 
                 Image(systemName: icon)

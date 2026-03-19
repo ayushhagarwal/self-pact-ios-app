@@ -3,8 +3,8 @@ import SwiftUI
 struct ProgressBar: View {
     let progress: Double
     var height: CGFloat = 4
-    var color: Color = AppColors.gold
-    var trackColor: Color = AppColors.surfaceHighlight
+    var color: Color = AppColors.accent
+    var trackColor: Color = AppColors.border
     
     @State private var animatedProgress: Double = 0
     

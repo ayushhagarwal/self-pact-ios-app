@@ -7,21 +7,21 @@ struct PactCard: View {
     @State private var isPressed = false
     
     private var accentColor: Color {
-        if pact.status == .completed {
-            return AppColors.success
-        } else if pact.status == .sealed {
-            return AppColors.gold
+        if pact.status == .sealed {
+            return AppColors.accent
+        } else if pact.status == .completed {
+            return AppColors.accentLight
         }
-        return AppColors.textMuted
+        return AppColors.border
     }
     
     private var iconBackgroundColor: Color {
         if pact.status == .sealed {
-            return AppColors.goldGlow
+            return AppColors.accentGlow
         } else if pact.status == .completed {
-            return AppColors.successGlow
+            return AppColors.accentGlow
         }
-        return AppColors.surfaceHighlight
+        return AppColors.backgroundElevated
     }
     
     var body: some View {
@@ -33,7 +33,7 @@ struct PactCard: View {
             // Accent strip
             Rectangle()
                 .fill(accentColor)
-                .frame(width: 3)
+                .frame(width: 2)
             
             // Card content
             VStack(alignment: .leading, spacing: 0) {
@@ -56,7 +56,7 @@ struct PactCard: View {
                                 }
                             }
                             .font(.system(size: 12))
-                            .foregroundColor(accentColor)
+                            .foregroundColor(pact.status == .draft ? AppColors.textSecondary : AppColors.accent)
                         }
                         
                         Text(pact.title)
@@ -92,8 +92,8 @@ struct PactCard: View {
                         ProgressBar(
                             progress: pact.timeProgress,
                             height: 3,
-                            color: pact.isOverdue ? AppColors.goldLight : AppColors.gold,
-                            trackColor: AppColors.surfaceHighlight
+                            color: AppColors.accent,
+                            trackColor: AppColors.border
                         )
                         
                         HStack(spacing: 5) {
@@ -101,7 +101,7 @@ struct PactCard: View {
                                 .font(.system(size: 10))
                                 .foregroundColor(AppColors.textTertiary)
                             
-                            Text(pact.isOverdue ? "Ready to reveal" : "\(pact.daysRemaining)d remaining")
+                            Text(pact.isOverdue ? "Ready to review" : "\(pact.daysRemaining)d remaining")
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(AppColors.textTertiary)
                         }
@@ -110,11 +110,11 @@ struct PactCard: View {
                         HStack {
                             Text("Draft")
                                 .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(AppColors.textTertiary)
+                                .foregroundColor(AppColors.textSecondary)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
-                                .background(AppColors.surfaceHighlight)
-                                .cornerRadius(6)
+                                .background(AppColors.backgroundElevated)
+                                .cornerRadius(8)
                             
                             Spacer()
                             
@@ -127,11 +127,11 @@ struct PactCard: View {
                         HStack {
                             Text(outcomeText(outcome))
                                 .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(outcome == .yes ? AppColors.success : AppColors.textTertiary)
+                                .foregroundColor(outcome == .yes ? AppColors.accent : AppColors.textSecondary)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
-                                .background(outcome == .yes ? AppColors.successGlow : AppColors.surfaceHighlight)
-                                .cornerRadius(6)
+                                .background(outcome == .yes ? AppColors.accentGlow : AppColors.backgroundElevated)
+                                .cornerRadius(8)
                             
                             Spacer()
                         }
@@ -140,18 +140,18 @@ struct PactCard: View {
                 .padding(.top, 10)
                 .padding(.leading, 38)
             }
-            .padding(.vertical, 16)
+            .padding(.vertical, 18)
             .padding(.leading, 14)
             .padding(.trailing, 16)
         }
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(AppColors.surface)
-                .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 2)
+                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 3)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(AppColors.border.opacity(0.5), lineWidth: 0.5)
+                .stroke(AppColors.border.opacity(0.8), lineWidth: 1)
         )
     }
     

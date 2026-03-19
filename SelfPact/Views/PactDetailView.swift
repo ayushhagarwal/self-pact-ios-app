@@ -31,7 +31,7 @@ struct PactDetailView: View {
                 deleteButton
             }
         }
-        .alert("Delete Pact", isPresented: $showDeleteAlert) {
+        .alert("Delete Goal", isPresented: $showDeleteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
                 pactStore.deletePact(id: pactId)
@@ -39,8 +39,8 @@ struct PactDetailView: View {
             }
         } message: {
             Text(pact?.isSealed == true
-                 ? "This pact is sealed. Deleting it will not restore your seal credit. This action cannot be undone."
-                 : "Are you sure you want to delete this draft?")
+                 ? "This goal is locked. Deleting it will not restore your commitment. This action cannot be undone."
+                 : "Are you sure you want to delete this draft goal?")
         }
         .sheet(isPresented: $showCheckIn) {
             CheckInView(pactId: pactId)
@@ -94,7 +94,7 @@ struct PactDetailView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "target")
                             .font(.system(size: 12))
-                            .foregroundColor(AppColors.indigo)
+                            .foregroundColor(AppColors.accent)
                         
                         Text("MEASURABLE TARGET")
                             .font(.system(size: 11, weight: .bold))
@@ -156,19 +156,19 @@ struct PactDetailView: View {
                 HStack(spacing: 5) {
                     Image(systemName: "lock.fill")
                         .font(.system(size: 10))
-                        .foregroundColor(AppColors.gold)
+                        .foregroundColor(AppColors.accent)
                     
-                    Text("Sealed")
+                    Text("Locked")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(AppColors.gold)
+                        .foregroundColor(AppColors.accent)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(AppColors.goldGlow)
-                .cornerRadius(8)
+                .background(AppColors.accentGlow)
+                .cornerRadius(10)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(AppColors.goldMuted, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(AppColors.accentLight.opacity(0.6), lineWidth: 1)
                 )
             }
             
@@ -244,7 +244,7 @@ struct PactDetailView: View {
                     icon: "clock",
                     label: "Days remaining",
                     value: pact.isReady ? "Ready" : "\(pact.daysRemaining)",
-                    valueColor: pact.isReady ? AppColors.gold : AppColors.textPrimary
+                    valueColor: pact.isReady ? AppColors.accent : AppColors.textPrimary
                 )
             }
             
@@ -253,16 +253,20 @@ struct PactDetailView: View {
                     .background(AppColors.border)
                     .padding(.horizontal, 12)
                 
-                // Sealed on
+                // Locked on
                 metaRow(
                     icon: "shield",
-                    label: "Sealed on",
+                    label: "Locked on",
                     value: sealTimestamp.formatted(.dateTime.month(.abbreviated).day().year())
                 )
             }
         }
-        .background(AppColors.surface)
-        .cornerRadius(14)
+        .background(AppColors.backgroundElevated)
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(AppColors.border, lineWidth: 1)
+        )
         .padding(.bottom, 14)
     }
     
@@ -305,30 +309,30 @@ struct PactDetailView: View {
                 
                 Text("\(Int(pact.timeProgress))")
                     .font(.system(size: 32, weight: .heavy))
-                    .foregroundColor(AppColors.gold)
+                    .foregroundColor(AppColors.accent)
                     .tracking(-1.2)
                 +
                 Text("%")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(AppColors.goldLight)
+                    .foregroundColor(AppColors.accentLight)
             }
             
             ProgressBar(
                 progress: pact.timeProgress,
                 height: 6,
-                color: AppColors.gold,
-                trackColor: AppColors.surfaceHighlight
+                color: AppColors.accent,
+                trackColor: AppColors.border
             )
         }
         .padding(18)
         .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(AppColors.surface)
-                .shadow(color: AppColors.gold.opacity(0.08), radius: 8, x: 0, y: 2)
+            RoundedRectangle(cornerRadius: 16)
+                .fill(AppColors.backgroundElevated)
+                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(AppColors.gold.opacity(0.15), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(AppColors.border, lineWidth: 1)
         )
         .padding(.bottom, 14)
     }
@@ -342,17 +346,17 @@ struct PactDetailView: View {
             HStack {
                 Text("Log a check-in")
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(AppColors.gold)
+                    .foregroundColor(AppColors.accent)
                 
                 Spacer()
                 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14))
-                    .foregroundColor(AppColors.gold)
+                    .foregroundColor(AppColors.accent)
             }
             .padding(16)
-            .background(AppColors.surface)
-            .cornerRadius(14)
+            .background(AppColors.backgroundElevated)
+            .cornerRadius(16)
         }
         .buttonStyle(.plain)
         .padding(.bottom, 14)
@@ -362,15 +366,15 @@ struct PactDetailView: View {
         Button {
             showReveal = true
         } label: {
-            Text("Reveal This Pact")
+            Text("Review This Goal")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundColor(AppColors.background)
+                .foregroundColor(.white)
                 .tracking(-0.2)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
-                .background(AppColors.gold)
-                .cornerRadius(14)
-                .shadow(color: AppColors.gold.opacity(0.25), radius: 10, x: 0, y: 4)
+                .background(AppColors.accentStrong)
+                .cornerRadius(16)
+                .shadow(color: AppColors.accent.opacity(0.16), radius: 10, x: 0, y: 4)
         }
         .buttonStyle(.plain)
         .padding(.bottom, 14)
@@ -382,15 +386,15 @@ struct PactDetailView: View {
                 Image(systemName: "lock.fill")
                     .font(.system(size: 14))
                 
-                Text("Preview & Seal")
+                Text("Review & Lock")
                     .font(.system(size: 16, weight: .bold))
                     .tracking(-0.2)
             }
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)
-            .background(AppColors.indigo)
-            .cornerRadius(14)
+            .background(AppColors.accentStrong)
+            .cornerRadius(16)
         }
         .buttonStyle(.plain)
         .padding(.bottom, 14)
@@ -416,7 +420,7 @@ struct PactDetailView: View {
                         
                         Text("\(checkIn.progress)%")
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(AppColors.indigo)
+                            .foregroundColor(AppColors.accent)
                     }
                     
                     if let note = checkIn.note, !note.isEmpty {
@@ -426,11 +430,11 @@ struct PactDetailView: View {
                             .lineSpacing(4)
                     }
                     
-                    ProgressBar(progress: Double(checkIn.progress), height: 3, color: AppColors.indigo)
+                    ProgressBar(progress: Double(checkIn.progress), height: 3, color: AppColors.accent)
                 }
                 .padding(14)
-                .background(AppColors.surface)
-                .cornerRadius(12)
+                .background(AppColors.backgroundElevated)
+                .cornerRadius(16)
             }
         }
         .padding(.top, 8)
@@ -440,7 +444,7 @@ struct PactDetailView: View {
     
     private var notFoundView: some View {
         VStack {
-            Text("Pact not found.")
+            Text("Goal not found.")
                 .font(.system(size: 16))
                 .foregroundColor(AppColors.textSecondary)
         }

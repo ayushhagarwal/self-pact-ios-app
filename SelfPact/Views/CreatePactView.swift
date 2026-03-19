@@ -57,8 +57,8 @@ struct CreatePactView: View {
             dismiss()
         } label: {
             ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(AppColors.surface)
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(AppColors.backgroundElevated)
                     .frame(width: 34, height: 34)
                 
                 Image(systemName: "xmark")
@@ -73,23 +73,23 @@ struct CreatePactView: View {
     private var headerArea: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack {
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(AppColors.goldGlow)
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(AppColors.accentGlow)
                     .frame(width: 52, height: 52)
                 
                 Image(systemName: "pencil.line")
                     .font(.system(size: 20))
-                    .foregroundColor(AppColors.gold)
+                    .foregroundColor(AppColors.accent)
             }
             .padding(.bottom, 20)
             
-            Text("Draft a Pact")
+            Text("Create a Goal")
                 .font(.system(size: 32, weight: .bold))
                 .foregroundColor(AppColors.textPrimary)
                 .tracking(-1.0)
                 .padding(.bottom, 10)
             
-            Text("Write clearly. This cannot be changed once sealed.")
+            Text("Write clearly. This becomes a commitment once locked.")
                 .font(.system(size: 15, weight: .medium))
                 .foregroundColor(AppColors.textSecondary)
                 .tracking(-0.1)
@@ -106,12 +106,16 @@ struct CreatePactView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("GOAL TITLE")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(AppColors.textTertiary)
+                    .foregroundColor(AppColors.textSecondary)
                     .tracking(0.8)
                 
                 TextField("e.g., Run a marathon by December", text: $title)
                     .textFieldStyle(PactTextFieldStyle(hasError: errors["title"] != nil))
                     .onChange(of: title) { _, _ in errors.removeValue(forKey: "title") }
+
+                Text("Be specific. This cannot be changed later.")
+                    .font(.system(size: 12))
+                    .foregroundColor(AppColors.textSecondary)
                 
                 if let error = errors["title"] {
                     Text(error)
@@ -123,9 +127,9 @@ struct CreatePactView: View {
             // Why This Matters
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 6) {
-                    Text("WHY THIS MATTERS")
+                    Text("WHY THIS COMMITMENT")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(AppColors.textTertiary)
+                        .foregroundColor(AppColors.textSecondary)
                         .tracking(0.8)
                     
                     Text("Optional")
@@ -143,7 +147,7 @@ struct CreatePactView: View {
                 HStack(spacing: 6) {
                     Text("MEASURABLE TARGET")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(AppColors.textTertiary)
+                        .foregroundColor(AppColors.textSecondary)
                         .tracking(0.8)
                     
                     Text("Optional")
@@ -160,16 +164,16 @@ struct CreatePactView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "calendar")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(AppColors.gold)
+                        .foregroundColor(AppColors.accent)
                     
                     Text("TARGET DATE")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(AppColors.textTertiary)
+                        .foregroundColor(AppColors.textSecondary)
                         .tracking(0.8)
                     
                     Text("Required")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(AppColors.gold.opacity(0.7))
+                        .foregroundColor(AppColors.textMuted)
                 }
                 
                 Button {
@@ -187,12 +191,12 @@ struct CreatePactView: View {
                             .foregroundColor(AppColors.textMuted)
                     }
                     .padding(16)
-                    .background(AppColors.surface)
-                    .cornerRadius(12)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(errors["targetDate"] != nil ? AppColors.error : AppColors.gold.opacity(0.2), lineWidth: errors["targetDate"] != nil ? 1 : 1.5)
-                    )
+            .background(AppColors.backgroundElevated)
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(errors["targetDate"] != nil ? AppColors.error : AppColors.border, lineWidth: 1)
+            )
                 }
                 .buttonStyle(.plain)
                 
@@ -204,10 +208,10 @@ struct CreatePactView: View {
                         displayedComponents: .date
                     )
                     .datePickerStyle(.graphical)
-                    .tint(AppColors.gold)
+                    .tint(AppColors.accent)
                     .padding()
-                    .background(AppColors.surface)
-                    .cornerRadius(12)
+                    .background(AppColors.backgroundElevated)
+                    .cornerRadius(16)
                     .onChange(of: targetDate) { _, _ in
                         errors.removeValue(forKey: "targetDate")
                     }
@@ -230,13 +234,13 @@ struct CreatePactView: View {
         } label: {
             Text("Continue")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundColor(AppColors.background)
+                .foregroundColor(.white)
                 .tracking(-0.2)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
-                .background(AppColors.gold)
-                .cornerRadius(14)
-                .shadow(color: AppColors.gold.opacity(0.2), radius: 8, x: 0, y: 4)
+                .background(AppColors.accentStrong)
+                .cornerRadius(16)
+                .shadow(color: AppColors.accent.opacity(0.14), radius: 8, x: 0, y: 4)
         }
         .buttonStyle(.plain)
         .padding(.top, 8)
@@ -281,10 +285,10 @@ struct PactTextFieldStyle: TextFieldStyle {
             .font(.system(size: 16))
             .foregroundColor(AppColors.textPrimary)
             .padding(16)
-            .background(AppColors.surface)
-            .cornerRadius(12)
+            .background(AppColors.backgroundElevated)
+            .cornerRadius(16)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 16)
                     .stroke(hasError ? AppColors.error : AppColors.border, lineWidth: 1)
             )
     }

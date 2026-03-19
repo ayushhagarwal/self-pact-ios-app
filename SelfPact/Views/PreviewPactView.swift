@@ -43,7 +43,7 @@ struct PreviewPactView: View {
                 }
             }
         }
-        .navigationTitle("Review")
+        .navigationTitle("Lock Goal")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(showSealAnimation)
     }
@@ -52,17 +52,11 @@ struct PreviewPactView: View {
     
     private func mainContent(pact: Pact) -> some View {
         ScrollView {
-            VStack(spacing: 0) {
-                // Contract card
+            VStack(spacing: 24) {
                 contractCard(pact: pact)
-                
-                // Warning box
-                warningBox
-                
-                // Actions
                 actionButtons
             }
-            .padding(20)
+            .padding(24)
             .padding(.bottom, 60)
         }
     }
@@ -71,141 +65,73 @@ struct PreviewPactView: View {
     
     private func contractCard(pact: Pact) -> some View {
         VStack(spacing: 0) {
-            // Header
-            HStack(spacing: 12) {
-                Rectangle()
-                    .fill(AppColors.borderLight)
-                    .frame(height: 1)
-                
-                Text("COMMITMENT CONTRACT")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(AppColors.textMuted)
-                    .tracking(2.5)
-                
-                Rectangle()
-                    .fill(AppColors.borderLight)
-                    .frame(height: 1)
-            }
-            .padding(.bottom, 22)
-            
             // Title
             Text(pact.title)
-                .font(.system(size: 22, weight: .bold))
+                .font(.system(size: 24, weight: .bold))
                 .foregroundColor(AppColors.textPrimary)
-                .tracking(-0.3)
+                .tracking(-0.2)
                 .lineSpacing(4)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, 20)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.bottom, 16)
             
             // Purpose
             if let why = pact.why, !why.isEmpty {
-                sectionView(label: "Purpose", content: why)
+                Text(why)
+                    .font(.system(size: 15))
+                    .foregroundColor(AppColors.textSecondary)
+                    .lineSpacing(6)
+                    .multilineTextAlignment(.center)
+                    .padding(.bottom, 16)
             }
-            
+
             // Measurable Target
             if let target = pact.measurableTarget, !target.isEmpty {
-                sectionView(label: "Measurable Target", content: target)
+                Text(target)
+                    .font(.system(size: 15))
+                    .foregroundColor(AppColors.textSecondary)
+                    .lineSpacing(6)
+                    .multilineTextAlignment(.center)
+                    .padding(.bottom, 16)
             }
-            
-            // Target Date
-            sectionView(
-                label: "Target Date",
-                content: pact.targetDate.formatted(.dateTime.weekday(.wide).month(.wide).day().year())
-            )
-            
-            // Footer
-            HStack(spacing: 6) {
-                Image(systemName: "shield")
-                    .font(.system(size: 12))
-                    .foregroundColor(AppColors.textMuted)
-                
-                Text("Drafted on \(pact.createdAt.formatted(.dateTime.month(.wide).day().year()))")
-                    .font(.system(size: 12))
-                    .italic()
-                    .foregroundColor(AppColors.textMuted)
+
+            VStack(spacing: 6) {
+                Text("Target date")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(AppColors.textSecondary)
+                    .tracking(0.4)
+
+                Text(pact.targetDate.formatted(.dateTime.weekday(.wide).month(.wide).day().year()))
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(AppColors.textPrimary)
             }
-            .padding(.top, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 16)
-            .overlay(
-                Rectangle()
-                    .fill(AppColors.border)
-                    .frame(height: 1),
-                alignment: .top
-            )
+            .padding(.top, 4)
         }
-        .padding(26)
+        .padding(28)
         .background(AppColors.surface)
-        .cornerRadius(18)
+        .cornerRadius(20)
         .overlay(
-            RoundedRectangle(cornerRadius: 18)
+            RoundedRectangle(cornerRadius: 20)
                 .stroke(AppColors.border, lineWidth: 1)
         )
-        .padding(.bottom, 18)
-    }
-    
-    private func sectionView(label: String, content: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label.uppercased())
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(AppColors.textTertiary)
-                .tracking(0.6)
-            
-            Text(content)
-                .font(.system(size: 15))
-                .foregroundColor(AppColors.textSecondary)
-                .lineSpacing(6)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.bottom, 16)
-    }
-    
-    // MARK: - Warning Box
-    
-    private var warningBox: some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(hex: "D4983F").opacity(0.12))
-                    .frame(width: 28, height: 28)
-                
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(AppColors.warning)
-            }
-            .padding(.top, 1)
-            
-            Text("Once sealed, this pact cannot be edited. The title, purpose, and target date become immutable.")
-                .font(.system(size: 13))
-                .foregroundColor(AppColors.warning)
-                .lineSpacing(4)
-        }
-        .padding(14)
-        .background(Color(hex: "D4983F").opacity(0.06))
-        .cornerRadius(12)
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color(hex: "D4983F").opacity(0.12), lineWidth: 1)
-        )
-        .padding(.bottom, 24)
+        .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: 6)
     }
     
     // MARK: - Action Buttons
     
     private var actionButtons: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
             // Edit button
             Button {
                 dismiss()
             } label: {
-                Text("Edit")
+                Text("Edit Goal")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(AppColors.textSecondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(AppColors.surface)
-                    .cornerRadius(14)
+                    .background(AppColors.backgroundElevated)
+                    .cornerRadius(16)
             }
             .buttonStyle(.plain)
             
@@ -213,26 +139,30 @@ struct PreviewPactView: View {
             Button {
                 handleSeal()
             } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 14))
-                    
-                    Text(hasCredits
-                         ? "Seal My Pact\(pactStore.userData.creditCount == 1 ? " (1 Free Seal)" : "")"
-                         : "Purchase a Seal")
-                        .font(.system(size: 16, weight: .bold))
-                        .tracking(-0.2)
-                }
-                .foregroundColor(AppColors.background)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
-                .background(AppColors.gold)
-                .cornerRadius(14)
-                .shadow(color: AppColors.gold.opacity(0.25), radius: 10, x: 0, y: 4)
+                Text("Lock Goal")
+                    .font(.system(size: 16, weight: .bold))
+                    .tracking(-0.2)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(AppColors.accentStrong)
+                    .cornerRadius(16)
+                    .shadow(color: AppColors.accent.opacity(0.16), radius: 10, x: 0, y: 4)
             }
             .buttonStyle(.plain)
             .disabled(isSealingInProgress || (!hasCredits))
             .opacity(isSealingInProgress ? 0.6 : 1.0)
+
+            if !hasCredits {
+                Text("1 lock required")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppColors.textMuted)
+            }
+
+            Text("This cannot be edited after locking")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(AppColors.textSecondary)
+                .padding(.top, 4)
         }
     }
     
@@ -242,15 +172,15 @@ struct PreviewPactView: View {
         VStack(spacing: 16) {
             ZStack {
                 RoundedRectangle(cornerRadius: 18)
-                    .fill(AppColors.goldGlow)
+                    .fill(AppColors.accentGlow)
                     .frame(width: 64, height: 64)
                 
                 Image(systemName: "lock.fill")
                     .font(.system(size: 26))
-                    .foregroundColor(AppColors.gold)
+                    .foregroundColor(AppColors.accent)
             }
             
-            Text("This pact is already sealed.")
+            Text("This goal is already locked.")
                 .font(.system(size: 16))
                 .foregroundColor(AppColors.textSecondary)
                 .multilineTextAlignment(.center)
@@ -263,8 +193,8 @@ struct PreviewPactView: View {
                     .foregroundColor(AppColors.textPrimary)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
-                    .background(AppColors.surface)
-                    .cornerRadius(12)
+                    .background(AppColors.backgroundElevated)
+                    .cornerRadius(16)
             }
             .buttonStyle(.plain)
         }
@@ -274,7 +204,7 @@ struct PreviewPactView: View {
     // MARK: - Not Found View
     
     private var notFoundView: some View {
-        Text("Pact not found.")
+        Text("Goal not found.")
             .font(.system(size: 16))
             .foregroundColor(AppColors.textSecondary)
             .frame(maxWidth: .infinity, maxHeight: .infinity)

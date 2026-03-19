@@ -3,59 +3,61 @@ import SwiftUI
 // MARK: - App Colors
 struct AppColors {
     // Backgrounds
-    static let background = Color(hex: "0D0D12")
-    static let backgroundElevated = Color(hex: "131318")
-    static let surface = Color(hex: "1A1A22")
-    static let surfaceLight = Color(hex: "22222C")
-    static let surfaceHighlight = Color(hex: "2A2A36")
-    static let border = Color(hex: "2A2A35")
-    static let borderLight = Color(hex: "363644")
-    
+    static let background = Color(hex: "FFFFFF")
+    static let backgroundElevated = Color(hex: "F9FAFB")
+    static let surface = Color(hex: "FFFFFF")
+    static let surfaceLight = Color(hex: "F9FAFB")
+    static let surfaceHighlight = Color(hex: "F9FAFB")
+    static let border = Color(hex: "E5E7EB")
+    static let borderLight = Color(hex: "E5E7EB").opacity(0.7)
+
     // Text
-    static let textPrimary = Color(hex: "ECEAE4")
-    static let textSecondary = Color(hex: "908D85")
-    static let textTertiary = Color(hex: "5F5D57")
-    static let textMuted = Color(hex: "44423D")
-    
-    // Gold (slightly muted for premium feel)
-    static let gold = Color(hex: "CFA03D")
-    static let goldLight = Color(hex: "E0B856")
-    static let goldDim = Color(hex: "8A6F2A")
-    static let goldMuted = Color(hex: "6B5722")
-    static let goldGlow = Color(hex: "CFA03D").opacity(0.12)
-    static let goldGlowStrong = Color(hex: "CFA03D").opacity(0.22)
-    
-    // Indigo
-    static let indigo = Color(hex: "6872CF")
-    static let indigoLight = Color(hex: "8B94E8")
-    static let indigoDim = Color(hex: "454B8A")
-    static let indigoGlow = Color(hex: "6872CF").opacity(0.12)
-    
-    // Accent
-    static let accent = Color(hex: "6872CF")
-    static let accentLight = Color(hex: "8B94E8")
-    
-    // Status
-    static let success = Color(hex: "4EA87A")
-    static let successGlow = Color(hex: "4EA87A").opacity(0.12)
-    static let warning = Color(hex: "D4983F")
-    static let error = Color(hex: "CF5858")
-    static let errorGlow = Color(hex: "CF5858").opacity(0.10)
-    
+    static let textPrimary = Color(hex: "111827")
+    static let textSecondary = Color(hex: "6B7280")
+    static let textTertiary = Color(hex: "6B7280").opacity(0.75)
+    static let textMuted = Color(hex: "6B7280").opacity(0.55)
+
+    // Matcha Accents
+    static let accent = Color(hex: "7FB77E")
+    static let accentLight = Color(hex: "A8D5BA")
+    static let accentStrong = Color(hex: "4D8B4D")
+    static let accentDim = Color(hex: "7FB77E").opacity(0.7)
+    static let accentGlow = Color(hex: "A8D5BA").opacity(0.35)
+    static let accentGlowStrong = Color(hex: "A8D5BA").opacity(0.6)
+
+    // Legacy tokens mapped to matcha palette
+    static let gold = accent
+    static let goldLight = accentLight
+    static let goldDim = accentDim
+    static let goldMuted = accentDim
+    static let goldGlow = accentGlow
+    static let goldGlowStrong = accentGlowStrong
+
+    static let indigo = accent
+    static let indigoLight = accentLight
+    static let indigoDim = accentDim
+    static let indigoGlow = accentGlow
+
+    static let success = accent
+    static let successGlow = accentGlow
+    static let warning = accentDim
+    static let error = Color.red
+    static let errorGlow = Color.red.opacity(0.10)
+
     // Overlays
-    static let overlay = Color.black.opacity(0.75)
-    static let overlayLight = Color.black.opacity(0.45)
-    static let overlayDark = Color.black.opacity(0.88)
-    
+    static let overlay = Color.black.opacity(0.08)
+    static let overlayLight = Color.black.opacity(0.04)
+    static let overlayDark = Color.black.opacity(0.12)
+
     // Reveal background
-    static let revealBackground = Color(hex: "060608")
-    
+    static let revealBackground = background
+
     // Gradients for subtle depth
     static var backgroundGradient: LinearGradient {
         LinearGradient(
             gradient: Gradient(colors: [
-                Color(hex: "0D0D12"),
-                Color(hex: "0A0A0E")
+                Color(hex: "FFFFFF"),
+                Color(hex: "F9FAFB")
             ]),
             startPoint: .top,
             endPoint: .bottom

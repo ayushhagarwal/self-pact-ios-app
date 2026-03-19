@@ -45,7 +45,7 @@ struct RevealView: View {
     
     var body: some View {
         ZStack {
-            AppColors.revealBackground.ignoresSafeArea()
+            AppColors.background.ignoresSafeArea()
             
             if pact == nil {
                 notFoundView
@@ -114,7 +114,7 @@ struct RevealView: View {
             }
             .padding(28)
             .frame(maxWidth: .infinity)
-            .background(AppColors.surface)
+            .background(AppColors.backgroundElevated)
             .cornerRadius(20)
             .overlay(
                 RoundedRectangle(cornerRadius: 20)
@@ -145,12 +145,12 @@ struct RevealView: View {
                 } label: {
                     Text("Yes")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(AppColors.background)
+                        .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(AppColors.gold)
-                        .cornerRadius(14)
-                        .shadow(color: AppColors.gold.opacity(0.25), radius: 10, x: 0, y: 4)
+                        .background(AppColors.accentStrong)
+                        .cornerRadius(16)
+                        .shadow(color: AppColors.accent.opacity(0.16), radius: 10, x: 0, y: 4)
                 }
                 .buttonStyle(.plain)
                 
@@ -164,10 +164,10 @@ struct RevealView: View {
                             .foregroundColor(AppColors.textSecondary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
-                            .background(AppColors.surface)
-                            .cornerRadius(14)
+                            .background(AppColors.backgroundElevated)
+                            .cornerRadius(16)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 14)
+                                RoundedRectangle(cornerRadius: 16)
                                     .stroke(AppColors.border, lineWidth: 1)
                             )
                     }
@@ -181,10 +181,10 @@ struct RevealView: View {
                             .foregroundColor(AppColors.textSecondary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
-                            .background(AppColors.surface)
-                            .cornerRadius(14)
+                            .background(AppColors.backgroundElevated)
+                            .cornerRadius(16)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 14)
+                                RoundedRectangle(cornerRadius: 16)
                                     .stroke(AppColors.border, lineWidth: 1)
                             )
                     }
@@ -230,10 +230,10 @@ struct RevealView: View {
                             .allowsHitTesting(false)
                     }
                 }
-                .background(AppColors.surface)
-                .cornerRadius(14)
+                .background(AppColors.backgroundElevated)
+                .cornerRadius(16)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14)
+                    RoundedRectangle(cornerRadius: 16)
                         .stroke(AppColors.border, lineWidth: 1)
                 )
                 .padding(.bottom, 20)
@@ -246,8 +246,8 @@ struct RevealView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
-                        .background(AppColors.indigo)
-                        .cornerRadius(14)
+                        .background(AppColors.accentStrong)
+                        .cornerRadius(16)
                 }
                 .buttonStyle(.plain)
             }
@@ -263,9 +263,9 @@ struct RevealView: View {
                 // Glow circle (only for "yes" outcome)
                 if selectedOutcome == .yes {
                     Circle()
-                        .fill(AppColors.gold)
+                        .fill(AppColors.accent)
                         .frame(width: geometry.size.width * 0.65, height: geometry.size.width * 0.65)
-                        .opacity(glowOpacity)
+                        .opacity(glowOpacity * 0.4)
                         .scaleEffect(glowScale)
                 }
             
@@ -288,12 +288,12 @@ struct RevealView: View {
                 } label: {
                     Text("Done")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(AppColors.background)
+                        .foregroundColor(.white)
                         .padding(.horizontal, 52)
                         .padding(.vertical, 16)
-                        .background(AppColors.gold)
-                        .cornerRadius(14)
-                        .shadow(color: AppColors.gold.opacity(0.25), radius: 10, x: 0, y: 4)
+                        .background(AppColors.accentStrong)
+                        .cornerRadius(16)
+                        .shadow(color: AppColors.accent.opacity(0.14), radius: 10, x: 0, y: 4)
                 }
                 .buttonStyle(.plain)
             }
@@ -307,7 +307,7 @@ struct RevealView: View {
     
     private var completeTitle: String {
         switch selectedOutcome {
-        case .yes: return "You kept your promise."
+        case .yes: return "You kept your commitment."
         case .partially: return "Progress was made."
         case .notYet: return "The journey continues."
         case nil: return ""
@@ -316,14 +316,14 @@ struct RevealView: View {
     
     private var completeSubtitle: String {
         selectedOutcome == .yes
-            ? "This pact has been honored."
+            ? "This goal has been honored."
             : "Your reflection has been recorded."
     }
     
     // MARK: - Not Found View
     
     private var notFoundView: some View {
-        Text("Pact not found.")
+        Text("Goal not found.")
             .font(.system(size: 16))
             .foregroundColor(AppColors.textSecondary)
     }

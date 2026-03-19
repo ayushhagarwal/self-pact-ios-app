@@ -4,331 +4,341 @@ struct OnboardingView: View {
     @Binding var isPresented: Bool
     @State private var currentPage = 0
     @State private var showPurchase = false
-    
+    @State private var backgroundDrift: CGFloat = 0
+    @State private var ctaShimmerOffset: CGFloat = -220
+
     var body: some View {
         ZStack {
-            AppColors.background.ignoresSafeArea()
-            
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(hex: "FFFFFF"),
+                    Color(hex: "F5FAF7")
+                ]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(hex: "FFFFFF").opacity(0.0),
+                    Color(hex: "F5FAF7").opacity(0.45),
+                    Color(hex: "FFFFFF").opacity(0.0)
+                ]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            .offset(y: backgroundDrift)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 9.0).repeatForever(autoreverses: true)) {
+                    backgroundDrift = -24
+                }
+            }
+
             VStack(spacing: 0) {
-                // Page indicator
                 HStack(spacing: 8) {
-                    ForEach(0..<4) { index in
+                    ForEach(0..<2) { index in
                         Circle()
-                            .fill(index == currentPage ? AppColors.gold : AppColors.textMuted)
+                            .fill(index == currentPage ? AppColors.accentStrong : AppColors.textMuted)
                             .frame(width: 6, height: 6)
                             .animation(.easeInOut(duration: 0.3), value: currentPage)
                     }
                 }
                 .padding(.top, 60)
-                .padding(.bottom, 40)
-                
-                // TabView for horizontal swiping
+                .padding(.bottom, 32)
+
                 TabView(selection: $currentPage) {
                     OnboardingScreen1()
                         .tag(0)
-                    
-                    OnboardingScreen2()
-                        .tag(1)
-                    
-                    OnboardingScreen3()
-                        .tag(2)
-                    
-                    OnboardingScreen4(
+
+                    OnboardingScreen2(
                         onStartTapped: {
                             isPresented = false
                         },
-                        onViewSealsOptions: {
+                        onViewOptions: {
                             showPurchase = true
                         }
                     )
-                    .tag(3)
+                    .tag(1)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.easeInOut, value: currentPage)
-                
-                // Continue button (hidden on last page)
-                if currentPage < 3 {
+
+                if currentPage == 0 {
                     Button {
                         withAnimation {
-                            currentPage += 1
+                            currentPage = 1
                         }
                     } label: {
                         Text("Continue")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(AppColors.background)
+                            .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 18)
-                            .background(AppColors.gold)
-                            .cornerRadius(14)
+                            .background(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color(hex: "7FB77E"),
+                                        Color(hex: "6AA96B")
+                                    ]),
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .cornerRadius(16)
+                            .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 6)
+                            .overlay(
+                                GeometryReader { proxy in
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.white.opacity(0.0),
+                                            Color.white.opacity(0.20),
+                                            Color.white.opacity(0.0)
+                                        ]),
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                    .frame(width: 46)
+                                    .rotationEffect(.degrees(14))
+                                    .offset(x: ctaShimmerOffset, y: 0)
+                                    .blur(radius: 0.2)
+                                    .mask(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .frame(width: proxy.size.width, height: proxy.size.height)
+                                    )
+                                }
+                            )
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressScaleButtonStyle())
                     .padding(.horizontal, 32)
                     .padding(.bottom, 50)
                     .transition(.opacity)
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .sheet(isPresented: $showPurchase) {
             PurchaseView(onPurchaseComplete: {
-                // Dismiss onboarding after successful purchase
                 isPresented = false
             })
         }
+        .onAppear {
+            withAnimation(.linear(duration: 1.2).delay(5.8).repeatForever(autoreverses: false)) {
+                ctaShimmerOffset = 420
+            }
+        }
     }
 }
 
-// MARK: - Screen 1: Philosophy
+// MARK: - Screen 1: Core Value + Visual
 struct OnboardingScreen1: View {
-    @State private var opacity: Double = 0
-    
+    @State private var cardScale: CGFloat = 0.96
+    @State private var cardOpacity: Double = 0
+    @State private var cardEntranceOffset: CGFloat = 18
+    @State private var cardFloatOffset: CGFloat = 0
+    @State private var textOpacity: Double = 0
+    @State private var progressFill: CGFloat = 0
+
     var body: some View {
         VStack(spacing: 0) {
-            Spacer()
-            
-            VStack(spacing: 24) {
-                // Headline
-                Text("Make a promise to\nyour future self.")
-                    .font(.system(size: 32, weight: .bold))
+            Spacer(minLength: 18)
+
+            OnboardingPreviewCard(progress: progressFill)
+                .scaleEffect(1.03 * cardScale)
+                .opacity(cardOpacity)
+                .offset(y: -40 + cardEntranceOffset + cardFloatOffset)
+                .padding(.horizontal, 28)
+                .padding(.bottom, 30)
+
+            VStack(spacing: 12) {
+                Text("Lock your goals.\nNo going back.")
+                    .font(.system(size: 30, weight: .bold))
                     .foregroundColor(AppColors.textPrimary)
-                    .tracking(-0.5)
+                    .tracking(-0.6)
                     .multilineTextAlignment(.center)
-                    .lineSpacing(4)
-                
-                // Subheadline
-                VStack(spacing: 8) {
-                    Text("Not a goal.")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(AppColors.textSecondary)
-                    
-                    Text("A contract.")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(AppColors.gold)
-                }
-                
-                // Supporting text
-                Text("SelfPact helps you write commitments that\ncannot be edited once sealed.")
-                    .font(.system(size: 14))
-                    .foregroundColor(AppColors.textTertiary)
+
+                Text("Once locked, it's final.")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(AppColors.textSecondary.opacity(0.8))
                     .multilineTextAlignment(.center)
-                    .lineSpacing(4)
-                    .padding(.top, 16)
             }
+            .opacity(textOpacity)
             .padding(.horizontal, 40)
-            .opacity(opacity)
-            
+
             Spacer()
         }
+        .padding(.top, 8)
         .onAppear {
-            withAnimation(.easeIn(duration: 0.8)) {
-                opacity = 1
+            withAnimation(.easeOut(duration: 0.30)) {
+                cardScale = 1.0
+                cardOpacity = 1
+                cardEntranceOffset = 0
+            }
+
+            withAnimation(.easeOut(duration: 0.30).delay(0.05)) {
+                progressFill = 0.25
+            }
+
+            withAnimation(.easeOut(duration: 0.30).delay(0.14)) {
+                textOpacity = 1
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                withAnimation(.easeInOut(duration: 3.6).repeatForever(autoreverses: true)) {
+                    progressFill = 0.30
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                withAnimation(.easeInOut(duration: 5.2).repeatForever(autoreverses: true)) {
+                    cardFloatOffset = -5
+                }
             }
         }
     }
 }
 
-// MARK: - Screen 2: How It Works
+private struct OnboardingPreviewCard: View {
+    let progress: CGFloat
+    @State private var badgeScale: CGFloat = 1.0
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color(hex: "7FB77E").opacity(0.07))
+                .frame(width: 320, height: 320)
+                .blur(radius: 56)
+
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Run a Marathon")
+                            .font(.system(size: 21, weight: .bold))
+                            .foregroundColor(AppColors.textPrimary)
+                            .tracking(-0.25)
+
+                        GeometryReader { proxy in
+                            ZStack(alignment: .leading) {
+                                Capsule()
+                                    .fill(Color(hex: "E5E7EB"))
+
+                                Capsule()
+                                    .fill(Color(hex: "7FB77E"))
+                                    .frame(width: proxy.size.width * max(0, min(progress, 1)))
+                            }
+                        }
+                        .frame(height: 6)
+
+                        HStack(spacing: 6) {
+                            Image(systemName: "clock")
+                                .font(.system(size: 12, weight: .semibold))
+
+                            Text("103 days left")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        .foregroundColor(AppColors.textSecondary)
+                    }
+
+                    Spacer()
+
+                    HStack(spacing: 5) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 10, weight: .bold))
+
+                        Text("Locked")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundColor(Color(hex: "2E7D32"))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color(hex: "E6F4EA"))
+                    .clipShape(Capsule())
+                    .scaleEffect(badgeScale)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 124, alignment: .topLeading)
+            .padding(18)
+            .background(Color(hex: "FFFFFF"))
+            .cornerRadius(18)
+            .overlay(
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(AppColors.borderLight, lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.12), radius: 40, x: 0, y: 20)
+            .rotationEffect(.degrees(-1.0))
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 5_600_000_000)
+                withAnimation(.easeInOut(duration: 0.40)) {
+                    badgeScale = 1.03
+                }
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                withAnimation(.easeInOut(duration: 0.40)) {
+                    badgeScale = 1.0
+                }
+            }
+        }
+    }
+}
+
+private struct PressScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Screen 2: Monetization + Clarity
 struct OnboardingScreen2: View {
-    var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
-            
-            VStack(spacing: 28) {
-                // Headline
-                Text("Write it clearly.")
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(AppColors.textPrimary)
-                    .tracking(-0.5)
-                
-                // Subheadline
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack(spacing: 12) {
-                        Circle()
-                            .fill(AppColors.goldGlow)
-                            .frame(width: 6, height: 6)
-                        Text("Choose what you want to achieve.")
-                            .font(.system(size: 17))
-                            .foregroundColor(AppColors.textSecondary)
-                    }
-                    
-                    HStack(spacing: 12) {
-                        Circle()
-                            .fill(AppColors.goldGlow)
-                            .frame(width: 6, height: 6)
-                        Text("Set a deadline.")
-                            .font(.system(size: 17))
-                            .foregroundColor(AppColors.textSecondary)
-                    }
-                    
-                    HStack(spacing: 12) {
-                        Circle()
-                            .fill(AppColors.goldGlow)
-                            .frame(width: 6, height: 6)
-                        Text("Be specific.")
-                            .font(.system(size: 17))
-                            .foregroundColor(AppColors.textSecondary)
-                    }
-                }
-                .padding(.horizontal, 8)
-                
-                // Footer
-                Text("Clarity creates commitment.")
-                    .font(.system(size: 13))
-                    .italic()
-                    .foregroundColor(AppColors.textTertiary)
-                    .padding(.top, 24)
-            }
-            .padding(.horizontal, 40)
-            
-            Spacer()
-        }
-    }
-}
-
-// MARK: - Screen 3: The Rule
-struct OnboardingScreen3: View {
-    @State private var showUnderline = false
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
-            
-            VStack(spacing: 28) {
-                // Headline with animated underline
-                VStack(spacing: 8) {
-                    Text("Once sealed,")
-                        .font(.system(size: 32, weight: .bold))
-                        .foregroundColor(AppColors.textPrimary)
-                        .tracking(-0.5)
-                    
-                    VStack(spacing: 4) {
-                        Text("it cannot be changed.")
-                            .font(.system(size: 32, weight: .bold))
-                            .foregroundColor(AppColors.gold)
-                            .tracking(-0.5)
-                        
-                        // Gold underline
-                        Rectangle()
-                            .fill(AppColors.gold)
-                            .frame(width: showUnderline ? 260 : 0, height: 2)
-                            .animation(.easeOut(duration: 0.6).delay(0.3), value: showUnderline)
-                    }
-                }
-                
-                // Subheadline
-                VStack(spacing: 12) {
-                    Text("No edits.")
-                        .font(.system(size: 17))
-                        .foregroundColor(AppColors.textSecondary)
-                    
-                    Text("No deleting.")
-                        .font(.system(size: 17))
-                        .foregroundColor(AppColors.textSecondary)
-                    
-                    Text("No backtracking.")
-                        .font(.system(size: 17))
-                        .foregroundColor(AppColors.textSecondary)
-                }
-                .padding(.top, 8)
-                
-                // Footer
-                Text("Discipline begins with finality.")
-                    .font(.system(size: 13))
-                    .italic()
-                    .foregroundColor(AppColors.textTertiary)
-                    .padding(.top, 28)
-            }
-            .padding(.horizontal, 40)
-            
-            Spacer()
-        }
-        .onAppear {
-            showUnderline = true
-        }
-    }
-}
-
-// MARK: - Screen 4: Free Seal + Purchase Intro
-struct OnboardingScreen4: View {
     let onStartTapped: () -> Void
-    let onViewSealsOptions: () -> Void
-    
+    let onViewOptions: () -> Void
+
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
-            
-            VStack(spacing: 20) {
-                // Headline
-                Text("You get 1 seal free.")
+
+            VStack(spacing: 16) {
+                Text("Start with 1 free commitment.")
                     .font(.system(size: 32, weight: .bold))
                     .foregroundColor(AppColors.textPrimary)
-                    .tracking(-0.5)
+                    .tracking(-0.6)
                     .multilineTextAlignment(.center)
-                
-                // Subheadline
-                Text("Use it wisely.")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(AppColors.gold)
-                    .padding(.bottom, 8)
-                
-                // Supporting text
-                Text("Seal a pact when you are ready to commit.")
-                    .font(.system(size: 15))
+
+                Text("Use it when you're serious.\nYou can unlock more anytime.")
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundColor(AppColors.textSecondary)
                     .multilineTextAlignment(.center)
-                
-                // Divider
-                Rectangle()
-                    .fill(AppColors.border)
-                    .frame(height: 1)
-                    .padding(.horizontal, 40)
-                    .padding(.vertical, 24)
-                
-                // Purchase info
-                VStack(spacing: 8) {
-                    Text("Need more seals later?")
-                        .font(.system(size: 14))
-                        .foregroundColor(AppColors.textTertiary)
-                    
-                    Text("You can purchase additional seals anytime.")
-                        .font(.system(size: 14))
-                        .foregroundColor(AppColors.textTertiary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding(.bottom, 16)
+                    .lineSpacing(4)
             }
             .padding(.horizontal, 40)
-            
+
             Spacer()
-            
-            // Buttons
+
             VStack(spacing: 12) {
-                // Primary button
                 Button {
-                    // Haptic feedback
                     let generator = UIImpactFeedbackGenerator(style: .medium)
                     generator.impactOccurred()
-                    
                     onStartTapped()
                 } label: {
-                    Text("Start with 1 Free Seal")
+                    Text("Start Free")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(AppColors.background)
+                        .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
-                        .background(AppColors.gold)
-                        .cornerRadius(14)
-                        .shadow(color: AppColors.gold.opacity(0.25), radius: 12, x: 0, y: 4)
+                        .background(AppColors.accentStrong)
+                        .cornerRadius(16)
+                        .shadow(color: AppColors.accent.opacity(0.16), radius: 12, x: 0, y: 4)
                 }
                 .buttonStyle(.plain)
-                
-                // Secondary button
+
                 Button {
-                    onViewSealsOptions()
+                    onViewOptions()
                 } label: {
-                    Text("View Seal Options")
+                    Text("See plans")
                         .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(AppColors.textTertiary)
+                        .foregroundColor(AppColors.textSecondary)
                         .padding(.vertical, 6)
                 }
                 .buttonStyle(.plain)

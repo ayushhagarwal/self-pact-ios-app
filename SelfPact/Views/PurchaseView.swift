@@ -22,13 +22,13 @@ struct PurchaseView: View {
                 
                 if isLoadingProducts {
                     ProgressView("Loading products...")
-                        .tint(AppColors.gold)
+                        .tint(AppColors.accent)
                         .foregroundColor(AppColors.textSecondary)
                 } else if storeKit.products.isEmpty {
                     VStack(spacing: 16) {
                         Image(systemName: "exclamationmark.triangle")
                             .font(.system(size: 48))
-                            .foregroundColor(AppColors.gold)
+                            .foregroundColor(AppColors.accent)
                         
                         Text("No Products Available")
                             .font(.system(size: 18, weight: .semibold))
@@ -77,7 +77,7 @@ struct PurchaseView: View {
             }
         } message: {
             if let product = selectedProduct {
-                Text("\(product.credits) seal credit\(product.credits > 1 ? "s" : "") added to your account.")
+                Text("\(product.credits) commitment\(product.credits > 1 ? "s" : "") added to your account.")
             }
         }
         .alert("Restored!", isPresented: $showRestoreSuccessAlert) {
@@ -86,7 +86,7 @@ struct PurchaseView: View {
                 onPurchaseComplete?()
             }
         } message: {
-            Text("\(storeKit.restoredCredits) seal credit\(storeKit.restoredCredits > 1 ? "s" : "") restored to your account.")
+            Text("\(storeKit.restoredCredits) commitment\(storeKit.restoredCredits > 1 ? "s" : "") restored to your account.")
         }
         .alert("Error", isPresented: $showErrorAlert) {
             Button("OK", role: .cancel) { }
@@ -137,8 +137,8 @@ struct PurchaseView: View {
             dismiss()
         } label: {
             ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(AppColors.surface)
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(AppColors.backgroundElevated)
                     .frame(width: 34, height: 34)
                 
                 Image(systemName: "xmark")
@@ -154,17 +154,17 @@ struct PurchaseView: View {
         VStack(spacing: 0) {
             ZStack {
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(AppColors.goldGlow)
+                    .fill(AppColors.accentGlow)
                     .frame(width: 80, height: 80)
                 
                 ZStack {
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(AppColors.goldGlowStrong)
+                        .fill(AppColors.accentGlowStrong)
                         .frame(width: 54, height: 54)
                     
                     Image(systemName: "lock.fill")
                         .font(.system(size: 26))
-                        .foregroundColor(AppColors.gold)
+                        .foregroundColor(AppColors.accent)
                 }
             }
             .padding(.bottom, 24)
@@ -177,7 +177,7 @@ struct PurchaseView: View {
                 .lineSpacing(0)
                 .padding(.bottom, 12)
             
-            Text("Sealing makes your pact permanent.\nThis is your contract with your future self.")
+            Text("Locking makes your goal permanent.\nThis is your commitment to yourself.")
                 .font(.system(size: 15, weight: .medium))
                 .foregroundColor(AppColors.textSecondary)
                 .tracking(-0.1)
@@ -189,16 +189,16 @@ struct PurchaseView: View {
             HStack(spacing: 6) {
                 Image(systemName: "shield.fill")
                     .font(.system(size: 13))
-                    .foregroundColor(AppColors.gold)
+                    .foregroundColor(AppColors.accent)
                 
-                Text("\(pactStore.userData.creditCount) credit\(pactStore.userData.creditCount != 1 ? "s" : "") available")
+                Text("\(pactStore.userData.creditCount) commitment\(pactStore.userData.creditCount != 1 ? "s" : "") available")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(AppColors.gold)
+                    .foregroundColor(AppColors.accent)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .background(AppColors.surface)
-            .cornerRadius(12)
+            .background(AppColors.backgroundElevated)
+            .cornerRadius(16)
         }
         .padding(.bottom, 36)
     }
@@ -216,7 +216,7 @@ struct PurchaseView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 11))
-                            .foregroundColor(AppColors.gold.opacity(0.7))
+                            .foregroundColor(AppColors.accent.opacity(0.7))
                         
                         Text("Most people choose 5")
                             .font(.system(size: 12, weight: .medium))
@@ -253,23 +253,23 @@ struct PurchaseView: View {
                 
                 if storeKit.purchaseInProgress && selectedProduct?.id == product.id {
                     ProgressView()
-                        .tint(product.featured ? AppColors.gold : AppColors.textPrimary)
+                        .tint(product.featured ? AppColors.accent : AppColors.textPrimary)
                 } else {
                     Text(product.formattedPrice)
                         .font(.system(size: 24, weight: .heavy))
-                        .foregroundColor(product.featured ? AppColors.gold : AppColors.textPrimary)
+                        .foregroundColor(product.featured ? AppColors.accent : AppColors.textPrimary)
                         .tracking(-1.0)
                 }
             }
             .padding(22)
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(product.featured ? AppColors.goldGlow : AppColors.surface)
-                    .shadow(color: product.featured ? AppColors.gold.opacity(0.15) : Color.clear, radius: 12, x: 0, y: 4)
+                    .fill(product.featured ? AppColors.accentGlow : AppColors.backgroundElevated)
+                    .shadow(color: product.featured ? AppColors.accent.opacity(0.12) : Color.black.opacity(0.04), radius: 12, x: 0, y: 4)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(product.featured ? AppColors.gold.opacity(0.4) : AppColors.border, lineWidth: product.featured ? 2 : 1)
+                    .stroke(product.featured ? AppColors.accent.opacity(0.4) : AppColors.border, lineWidth: product.featured ? 2 : 1)
             )
             .overlay(
                 // Badge
@@ -283,10 +283,10 @@ struct PurchaseView: View {
                                 .font(.system(size: 11, weight: .bold))
                                 .tracking(0.3)
                         }
-                        .foregroundColor(AppColors.background)
+                        .foregroundColor(.white)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(AppColors.gold)
+                        .background(AppColors.accent)
                         .clipShape(BadgeShape())
                     }
                 },
@@ -330,7 +330,7 @@ struct PurchaseView: View {
     // MARK: - Disclaimer
     
     private var disclaimer: some View {
-        Text("Seal credits are consumable. Restore only recovers unprocessed purchases. Used credits cannot be refunded or restored.")
+        Text("Commitments are consumable. Restore only recovers unprocessed purchases. Used commitments cannot be refunded or restored.")
             .font(.system(size: 11))
             .foregroundColor(AppColors.textMuted)
             .multilineTextAlignment(.center)
