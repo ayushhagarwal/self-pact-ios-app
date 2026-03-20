@@ -11,7 +11,7 @@ struct SettingsView: View {
             
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Settings")
+                    Text("GoalLock")
                         .font(.system(size: 30, weight: .bold))
                         .foregroundColor(AppColors.textPrimary)
                         .tracking(-0.5)
@@ -208,7 +208,7 @@ struct SettingsView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("SelfPact")
+                    Text("GoalLock")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(AppColors.textPrimary)
                     

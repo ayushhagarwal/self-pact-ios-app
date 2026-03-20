@@ -84,7 +84,7 @@ struct HomeView: View {
     private var headerSection: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("SelfPact")
+                Text("GoalLock")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(AppColors.textSecondary)
                     .tracking(0.4)
