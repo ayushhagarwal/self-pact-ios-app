@@ -80,8 +80,8 @@ class StoreKitManager: ObservableObject {
                     return IAPProductModel(
                         id: productID,
                         product: product,
-                        displayTitle: "1 Seal Credit",
-                        displayDescription: "Seal one commitment contract.",
+                        displayTitle: "1 Commitment",
+                        displayDescription: "Lock one commitment.",
                         badge: nil,
                         featured: false
                     )
@@ -90,8 +90,8 @@ class StoreKitManager: ObservableObject {
                     return IAPProductModel(
                         id: productID,
                         product: product,
-                        displayTitle: "5 Seal Credits",
-                        displayDescription: "Best value — seal five pacts.",
+                        displayTitle: "5 Commitments",
+                        displayDescription: "Best value — lock five commitments.",
                         badge: "Save 50%",
                         featured: true
                     )
