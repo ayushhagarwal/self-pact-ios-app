@@ -33,6 +33,15 @@ struct CreatePactView: View {
                     .padding(22)
                     .padding(.bottom, 60)
                 }
+
+                if showDatePicker {
+                    datePickerModal
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .scale(scale: 0.96)),
+                            removal: .opacity
+                        ))
+                        .zIndex(1)
+                }
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -40,6 +49,7 @@ struct CreatePactView: View {
                     closeButton
                 }
             }
+            .animation(.spring(response: 0.34, dampingFraction: 0.88), value: showDatePicker)
             .navigationDestination(isPresented: $navigateToPreview) {
                 if let pactId = createdPactId {
                     PreviewPactView(pactId: pactId, onDismissAll: {
@@ -177,7 +187,9 @@ struct CreatePactView: View {
                 }
                 
                 Button {
-                    showDatePicker.toggle()
+                    withAnimation {
+                        showDatePicker = true
+                    }
                 } label: {
                     HStack {
                         Text(targetDate.formatted(.dateTime.year().month().day()))
@@ -189,33 +201,17 @@ struct CreatePactView: View {
                         Image(systemName: "chevron.down")
                             .font(.system(size: 12))
                             .foregroundColor(AppColors.textMuted)
+                            .rotationEffect(.degrees(showDatePicker ? 180 : 0))
                     }
                     .padding(16)
-            .background(AppColors.backgroundElevated)
-            .cornerRadius(16)
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(errors["targetDate"] != nil ? AppColors.error : AppColors.border, lineWidth: 1)
-            )
-                }
-                .buttonStyle(.plain)
-                
-                if showDatePicker {
-                    DatePicker(
-                        "",
-                        selection: $targetDate,
-                        in: Date().addingTimeInterval(86400)...,
-                        displayedComponents: .date
-                    )
-                    .datePickerStyle(.graphical)
-                    .tint(AppColors.accent)
-                    .padding()
                     .background(AppColors.backgroundElevated)
                     .cornerRadius(16)
-                    .onChange(of: targetDate) { _, _ in
-                        errors.removeValue(forKey: "targetDate")
-                    }
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(errors["targetDate"] != nil ? AppColors.error : AppColors.border, lineWidth: 1)
+                    )
                 }
+                .buttonStyle(.plain)
                 
                 if let error = errors["targetDate"] {
                     Text(error)
@@ -244,6 +240,64 @@ struct CreatePactView: View {
         }
         .buttonStyle(.plain)
         .padding(.top, 8)
+    }
+
+    private var datePickerModal: some View {
+        GlowModal(
+            title: "Choose a Target Date",
+            subtitle: "Pick the day this commitment should be reviewed.",
+            onDismiss: {
+                withAnimation {
+                    showDatePicker = false
+                }
+            }
+        ) {
+            VStack(spacing: 18) {
+                DatePicker(
+                    "",
+                    selection: $targetDate,
+                    in: Date().addingTimeInterval(86400)...,
+                    displayedComponents: .date
+                )
+                .labelsHidden()
+                .datePickerStyle(.graphical)
+                .tint(AppColors.accentStrong)
+                .padding(16)
+                .background(AppColors.backgroundElevated)
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(AppColors.border, lineWidth: 1)
+                )
+                .onChange(of: targetDate) { _, _ in
+                    errors.removeValue(forKey: "targetDate")
+                }
+
+                HStack(spacing: 12) {
+                    Text(targetDate.formatted(.dateTime.weekday(.wide).month(.wide).day().year()))
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(AppColors.textSecondary)
+                        .lineLimit(2)
+
+                    Spacer(minLength: 0)
+
+                    Button {
+                        withAnimation {
+                            showDatePicker = false
+                        }
+                    } label: {
+                        Text("Done")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 22)
+                            .padding(.vertical, 12)
+                            .background(AppColors.accentStrong)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
     }
     
     // MARK: - Validation
