@@ -70,17 +70,17 @@ struct ContentView: View {
                     .environmentObject(storeKitManager)
                     .transition(.opacity)
                     .zIndex(1)
-                    .onChange(of: showOnboarding) { _, newValue in
-                        if !newValue {
-                            // Mark onboarding as completed
-                            hasCompletedOnboarding = true
-                            
-                            // Navigate to CreatePactView after short delay
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                navigateToCreatePact = true
-                            }
-                        }
-                    }
+            }
+        }
+        .onChange(of: showOnboarding) { _, newValue in
+            if !newValue {
+                // Mark onboarding as completed
+                hasCompletedOnboarding = true
+                
+                // Navigate to CreatePactView after short delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    navigateToCreatePact = true
+                }
             }
         }
     }
