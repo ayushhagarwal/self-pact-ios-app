@@ -6,7 +6,6 @@ struct OnboardingView: View {
     @State private var showPurchase = false
     @State private var backgroundDrift: CGFloat = 0
     @State private var ctaShimmerOffset: CGFloat = -220
-    @State private var contentVisible: Bool = false
 
     var body: some View {
         ZStack {
@@ -72,12 +71,23 @@ struct OnboardingView: View {
                             currentPage = 1
                         }
                     } label: {
-                        Text("Lock This Goal")
-                            .font(.app(16, .bold))
+                        Text("Lock My First Goal")
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 18)
-                            .primaryButtonChrome(cornerRadius: 16)
+                            .background(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color(hex: "7FB77E"),
+                                        Color(hex: "6AA96B")
+                                    ]),
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .cornerRadius(16)
+                            .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 6)
                             .overlay(
                                 GeometryReader { proxy in
                                     LinearGradient(
@@ -106,9 +116,6 @@ struct OnboardingView: View {
                     .transition(.opacity)
                 }
             }
-            .opacity(contentVisible ? 1 : 0)
-            .offset(y: contentVisible ? 0 : 10)
-            .animation(.easeOut(duration: 0.3), value: contentVisible)
         }
         .sheet(isPresented: $showPurchase) {
             PurchaseView(onPurchaseComplete: {
@@ -118,9 +125,6 @@ struct OnboardingView: View {
         .onAppear {
             withAnimation(.linear(duration: 1.2).delay(5.8).repeatForever(autoreverses: false)) {
                 ctaShimmerOffset = 420
-            }
-            withAnimation(.easeOut(duration: 0.3)) {
-                contentVisible = true
             }
         }
     }
@@ -148,13 +152,13 @@ struct OnboardingScreen1: View {
 
             VStack(spacing: 12) {
                 Text("Lock your goals.\nNo going back.")
-                    .font(.app(32, .bold))
+                    .font(.system(size: 30, weight: .bold))
                     .foregroundColor(AppColors.textPrimary)
                     .tracking(-0.6)
                     .multilineTextAlignment(.center)
 
-                Text("Once locked, it's final.")
-                    .font(.app(16, .medium))
+                Text("This cannot be undone.")
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundColor(AppColors.textSecondary.opacity(0.8))
                     .multilineTextAlignment(.center)
             }
@@ -209,7 +213,7 @@ private struct OnboardingPreviewCard: View {
                 HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Run a Marathon")
-                            .font(.app(22, .bold))
+                            .font(.system(size: 21, weight: .bold))
                             .foregroundColor(AppColors.textPrimary)
                             .tracking(-0.25)
 
@@ -230,7 +234,7 @@ private struct OnboardingPreviewCard: View {
                                 .font(.system(size: 12, weight: .semibold))
 
                             Text("103 days left")
-                                .font(.app(14, .medium))
+                                .font(.system(size: 14, weight: .medium))
                         }
                         .foregroundColor(AppColors.textSecondary)
                     }
@@ -242,7 +246,7 @@ private struct OnboardingPreviewCard: View {
                             .font(.system(size: 10, weight: .bold))
 
                         Text("Locked")
-                            .font(.app(12, .semibold))
+                            .font(.system(size: 12, weight: .semibold))
                     }
                     .foregroundColor(Color(hex: "2E7D32"))
                     .padding(.horizontal, 10)
@@ -278,6 +282,14 @@ private struct OnboardingPreviewCard: View {
     }
 }
 
+private struct PressScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+    }
+}
+
 // MARK: - Screen 2: Monetization + Clarity
 struct OnboardingScreen2: View {
     let onStartTapped: () -> Void
@@ -289,13 +301,13 @@ struct OnboardingScreen2: View {
 
             VStack(spacing: 16) {
                 Text("Start with 1 free commitment.")
-                    .font(.app(34, .bold))
+                    .font(.system(size: 32, weight: .bold))
                     .foregroundColor(AppColors.textPrimary)
                     .tracking(-0.6)
                     .multilineTextAlignment(.center)
 
                 Text("Use it when you're serious.\nYou can unlock more anytime.")
-                    .font(.app(16, .medium))
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundColor(AppColors.textSecondary)
                     .multilineTextAlignment(.center)
                     .lineSpacing(4)
@@ -310,20 +322,22 @@ struct OnboardingScreen2: View {
                     generator.impactOccurred()
                     onStartTapped()
                 } label: {
-                    Text("Commit Now")
-                        .font(.app(16, .bold))
+                    Text("Make My First Commitment")
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
-                        .primaryButtonChrome(cornerRadius: 16)
+                        .background(AppColors.accentStrong)
+                        .cornerRadius(16)
+                        .shadow(color: AppColors.accent.opacity(0.16), radius: 12, x: 0, y: 4)
                 }
-                .buttonStyle(PressScaleButtonStyle())
+                .buttonStyle(.plain)
 
                 Button {
                     onViewOptions()
                 } label: {
                     Text("See plans")
-                        .font(.app(15, .medium))
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundColor(AppColors.textSecondary)
                         .padding(.vertical, 6)
                 }

@@ -76,7 +76,7 @@ struct ContentView: View {
             if !newValue {
                 // Mark onboarding as completed
                 hasCompletedOnboarding = true
-                
+
                 // Navigate to CreatePactView after short delay
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     navigateToCreatePact = true

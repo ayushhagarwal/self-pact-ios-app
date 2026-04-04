@@ -262,7 +262,7 @@ struct HomeView: View {
     private var pactList: some View {
         LazyVStack(spacing: 14) {
             ForEach(filteredPacts) { pact in
-                NavigationLink(value: pact.id) {
+                NavigationLink(destination: PactDetailView(pactId: pact.id)) {
                     PactCard(pact: pact)
                 }
                 .buttonStyle(.plain)
