@@ -9,10 +9,28 @@ private struct OnboardingGoalTemplate: Identifiable, Equatable {
     let nextAction: String
 }
 
+private struct OnboardingIntroSlide: Identifiable {
+    let id: String
+    let title: String
+    let caption: String
+    let accent: Color
+    let glow: Color
+    let visual: OnboardingIntroVisual
+}
+
+private enum OnboardingIntroVisual {
+    case create
+    case track
+    case lock
+}
+
 struct OnboardingView: View {
     @Binding var isPresented: Bool
     @EnvironmentObject var pactStore: PactStore
 
+    @State private var showBuilder = false
+    @State private var introIndex = 0
+    @State private var introAnimationActive = false
     @State private var selectedTemplate = onboardingTemplates[0]
     @State private var goalTitle = ""
     @State private var target = ""
@@ -36,15 +54,88 @@ struct OnboardingView: View {
             if let createdPact {
                 reminderStep(for: createdPact)
                     .transition(.opacity.combined(with: .move(edge: .trailing)))
-            } else {
+            } else if showBuilder {
                 builderStep
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
+            } else {
+                introStep
                     .transition(.opacity.combined(with: .move(edge: .leading)))
             }
         }
         .animation(.spring(response: 0.34, dampingFraction: 0.88), value: createdPact?.id)
+        .animation(.spring(response: 0.34, dampingFraction: 0.88), value: showBuilder)
         .onAppear {
             applyTemplate(selectedTemplate)
+            introAnimationActive = true
         }
+    }
+
+    private var currentIntroSlide: OnboardingIntroSlide {
+        onboardingIntroSlides[introIndex]
+    }
+
+    private var introStep: some View {
+        VStack(spacing: 24) {
+            Spacer(minLength: 24)
+
+            VStack(spacing: 18) {
+                OnboardingIntroCard(
+                    slide: currentIntroSlide,
+                    isActive: introAnimationActive
+                )
+                .id(currentIntroSlide.id)
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+
+                VStack(spacing: 8) {
+                    Text(currentIntroSlide.title)
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(AppColors.textPrimary)
+                        .tracking(-0.7)
+                        .multilineTextAlignment(.center)
+
+                    Text(currentIntroSlide.caption)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(AppColors.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 6)
+            }
+
+            Spacer(minLength: 16)
+
+            VStack(spacing: 18) {
+                introProgress
+
+                Button {
+                    advanceIntro()
+                } label: {
+                    Text(introIndex == onboardingIntroSlides.count - 1 ? "Build My First Goal" : "Next")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 17)
+                        .background(AppColors.accentStrong)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 34)
+    }
+
+    private var introProgress: some View {
+        HStack(spacing: 7) {
+            ForEach(onboardingIntroSlides.indices, id: \.self) { index in
+                Capsule()
+                    .fill(index == introIndex ? AppColors.accentStrong : AppColors.border)
+                    .frame(width: index == introIndex ? 24 : 7, height: 7)
+                    .animation(.spring(response: 0.28, dampingFraction: 0.82), value: introIndex)
+            }
+        }
+        .accessibilityHidden(true)
     }
 
     private var builderStep: some View {
@@ -320,6 +411,233 @@ struct OnboardingView: View {
 
         createdPact = pact
     }
+
+    private func advanceIntro() {
+        if introIndex < onboardingIntroSlides.count - 1 {
+            introAnimationActive = false
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+                introIndex += 1
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                introAnimationActive = true
+            }
+        } else {
+            showBuilder = true
+        }
+    }
+}
+
+private struct OnboardingIntroCard: View {
+    let slide: OnboardingIntroSlide
+    let isActive: Bool
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(AppColors.surface)
+
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            slide.glow.opacity(0.85),
+                            Color.clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            introVisual
+        }
+        .frame(height: 300)
+        .overlay(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .stroke(AppColors.border, lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.08), radius: 22, x: 0, y: 12)
+    }
+
+    @ViewBuilder
+    private var introVisual: some View {
+        switch slide.visual {
+        case .create:
+            createVisual
+        case .track:
+            trackVisual
+        case .lock:
+            lockVisual
+        }
+    }
+
+    private var createVisual: some View {
+        VStack(spacing: 14) {
+            OnboardingMiniGoalCard(
+                icon: "target",
+                title: "Move consistently",
+                subtitle: "Walk 20 minutes today",
+                tint: slide.accent
+            )
+            .offset(y: isActive ? 0 : 16)
+            .opacity(isActive ? 1 : 0.2)
+
+            HStack(spacing: 10) {
+                ForEach(["Fitness", "Study", "Focus"], id: \.self) { label in
+                    Text(label)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(slide.accent)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(AppColors.surface)
+                        .clipShape(Capsule())
+                }
+            }
+            .offset(y: isActive ? 0 : 12)
+            .opacity(isActive ? 1 : 0)
+        }
+        .padding(24)
+        .animation(.spring(response: 0.42, dampingFraction: 0.78), value: isActive)
+    }
+
+    private var trackVisual: some View {
+        VStack(spacing: 16) {
+            HStack(spacing: 10) {
+                OnboardingCheckInPill(title: "Did it", icon: "checkmark", tint: AppColors.success, isSelected: isActive)
+                OnboardingCheckInPill(title: "Partial", icon: "circle.lefthalf.filled", tint: AppColors.warning, isSelected: false)
+                OnboardingCheckInPill(title: "Missed", icon: "xmark", tint: AppColors.error, isSelected: false)
+            }
+
+            HStack(spacing: 10) {
+                OnboardingStatTile(value: "4d", label: "Streak")
+                OnboardingStatTile(value: "21d", label: "Left")
+                OnboardingStatTile(value: "Today", label: "Last")
+            }
+        }
+        .padding(24)
+        .scaleEffect(isActive ? 1 : 0.96)
+        .opacity(isActive ? 1 : 0.35)
+        .animation(.spring(response: 0.38, dampingFraction: 0.78), value: isActive)
+    }
+
+    private var lockVisual: some View {
+        ZStack {
+            Circle()
+                .stroke(AppColors.commitmentGlow, lineWidth: 15)
+                .frame(width: 152, height: 152)
+
+            Circle()
+                .trim(from: 0, to: isActive ? 0.82 : 0.18)
+                .stroke(
+                    AppColors.commitment,
+                    style: StrokeStyle(lineWidth: 15, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-90))
+                .frame(width: 152, height: 152)
+
+            VStack(spacing: 8) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundColor(AppColors.commitment)
+
+                Text("First lock free")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(AppColors.commitment)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(AppColors.surface)
+                    .clipShape(Capsule())
+            }
+            .scaleEffect(isActive ? 1 : 0.9)
+        }
+        .animation(.easeInOut(duration: 0.52), value: isActive)
+    }
+}
+
+private struct OnboardingMiniGoalCard: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let tint: Color
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(tint)
+                .frame(width: 44, height: 44)
+                .background(AppColors.accentGlow)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title)
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundColor(AppColors.textPrimary)
+
+                Text(subtitle)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(AppColors.textSecondary)
+            }
+
+            Spacer()
+        }
+        .padding(16)
+        .background(AppColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(AppColors.border, lineWidth: 1)
+        )
+    }
+}
+
+private struct OnboardingCheckInPill: View {
+    let title: String
+    let icon: String
+    let tint: Color
+    let isSelected: Bool
+
+    var body: some View {
+        VStack(spacing: 7) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .bold))
+
+            Text(title)
+                .font(.system(size: 12, weight: .bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .foregroundColor(isSelected ? .white : tint)
+        .frame(maxWidth: .infinity)
+        .frame(height: 72)
+        .background(isSelected ? tint : AppColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(isSelected ? tint.opacity(0.2) : AppColors.border, lineWidth: 1)
+        )
+    }
+}
+
+private struct OnboardingStatTile: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(AppColors.textPrimary)
+
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(AppColors.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 13)
+        .background(AppColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 15))
+    }
 }
 
 private enum OnboardingField: Hashable {
@@ -327,6 +645,33 @@ private enum OnboardingField: Hashable {
     case target
     case action
 }
+
+private let onboardingIntroSlides: [OnboardingIntroSlide] = [
+    OnboardingIntroSlide(
+        id: "create",
+        title: "Create a goal",
+        caption: "Pick one change and the next action.",
+        accent: AppColors.accent,
+        glow: AppColors.accentGlow,
+        visual: .create
+    ),
+    OnboardingIntroSlide(
+        id: "track",
+        title: "Track it daily",
+        caption: "Check in without journaling.",
+        accent: AppColors.accent,
+        glow: AppColors.accentGlow,
+        visual: .track
+    ),
+    OnboardingIntroSlide(
+        id: "lock",
+        title: "Lock it later",
+        caption: "Your first lock is free. More locks use credits.",
+        accent: AppColors.commitment,
+        glow: AppColors.commitmentGlow,
+        visual: .lock
+    )
+]
 
 private let onboardingTemplates: [OnboardingGoalTemplate] = [
     OnboardingGoalTemplate(
