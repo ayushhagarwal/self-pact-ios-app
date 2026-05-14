@@ -1,356 +1,387 @@
 import SwiftUI
 
+private struct OnboardingGoalTemplate: Identifiable, Equatable {
+    let id: String
+    let title: String
+    let icon: String
+    let exampleGoal: String
+    let measurableTarget: String
+    let nextAction: String
+}
+
 struct OnboardingView: View {
     @Binding var isPresented: Bool
-    @State private var currentPage = 0
-    @State private var showPurchase = false
-    @State private var backgroundDrift: CGFloat = 0
-    @State private var ctaShimmerOffset: CGFloat = -220
+    @EnvironmentObject var pactStore: PactStore
+
+    @State private var selectedTemplate = onboardingTemplates[0]
+    @State private var goalTitle = ""
+    @State private var target = ""
+    @State private var nextAction = ""
+    @State private var cadence: GoalCadence = .daily
+    @State private var customWeekdays: Set<Int> = [2, 3, 4, 5, 6]
+    @State private var reviewDate = Date().addingTimeInterval(86400 * 30)
+    @State private var createdPact: Pact?
+    @State private var isRequestingReminders = false
+    @FocusState private var focusedField: OnboardingField?
+
+    private var canCreateGoal: Bool {
+        !goalTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(hex: "FFFFFF"),
-                    Color(hex: "F5FAF7")
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            AppColors.backgroundGradient
+                .ignoresSafeArea()
 
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(hex: "FFFFFF").opacity(0.0),
-                    Color(hex: "F5FAF7").opacity(0.45),
-                    Color(hex: "FFFFFF").opacity(0.0)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-            .offset(y: backgroundDrift)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 9.0).repeatForever(autoreverses: true)) {
-                    backgroundDrift = -24
-                }
-            }
-
-            VStack(spacing: 0) {
-                HStack(spacing: 8) {
-                    ForEach(0..<2) { index in
-                        Circle()
-                            .fill(index == currentPage ? AppColors.accentStrong : AppColors.textMuted)
-                            .frame(width: 6, height: 6)
-                            .animation(.easeInOut(duration: 0.3), value: currentPage)
-                    }
-                }
-                .padding(.top, 60)
-                .padding(.bottom, 32)
-
-                TabView(selection: $currentPage) {
-                    OnboardingScreen1()
-                        .tag(0)
-
-                    OnboardingScreen2(
-                        onStartTapped: {
-                            isPresented = false
-                        },
-                        onViewOptions: {
-                            showPurchase = true
-                        }
-                    )
-                    .tag(1)
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .animation(.easeInOut, value: currentPage)
-
-                if currentPage == 0 {
-                    Button {
-                        withAnimation {
-                            currentPage = 1
-                        }
-                    } label: {
-                        Text("Lock My First Goal")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 18)
-                            .background(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color(hex: "7FB77E"),
-                                        Color(hex: "6AA96B")
-                                    ]),
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                            .cornerRadius(16)
-                            .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 6)
-                            .overlay(
-                                GeometryReader { proxy in
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color.white.opacity(0.0),
-                                            Color.white.opacity(0.20),
-                                            Color.white.opacity(0.0)
-                                        ]),
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                    .frame(width: 46)
-                                    .rotationEffect(.degrees(14))
-                                    .offset(x: ctaShimmerOffset, y: 0)
-                                    .blur(radius: 0.2)
-                                    .mask(
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .frame(width: proxy.size.width, height: proxy.size.height)
-                                    )
-                                }
-                            )
-                    }
-                    .buttonStyle(PressScaleButtonStyle())
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 50)
-                    .transition(.opacity)
-                }
+            if let createdPact {
+                reminderStep(for: createdPact)
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
+            } else {
+                builderStep
+                    .transition(.opacity.combined(with: .move(edge: .leading)))
             }
         }
-        .sheet(isPresented: $showPurchase) {
-            PurchaseView(onPurchaseComplete: {
-                isPresented = false
-            })
-        }
+        .animation(.spring(response: 0.34, dampingFraction: 0.88), value: createdPact?.id)
         .onAppear {
-            withAnimation(.linear(duration: 1.2).delay(5.8).repeatForever(autoreverses: false)) {
-                ctaShimmerOffset = 420
+            applyTemplate(selectedTemplate)
+        }
+    }
+
+    private var builderStep: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                header
+                goalQuestion
+                templatePicker
+                cadencePicker
+                reviewDatePicker
+                createButton
+            }
+            .padding(.horizontal, 22)
+            .padding(.top, 60)
+            .padding(.bottom, 40)
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Start with today")
+                .font(.system(size: 34, weight: .bold))
+                .foregroundColor(AppColors.textPrimary)
+                .tracking(-0.7)
+
+            Text("Create one trial goal. You can track it for free and lock it later if you want the extra commitment.")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(AppColors.textSecondary)
+                .lineSpacing(5)
+        }
+    }
+
+    private var goalQuestion: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("What are you trying to change?")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundColor(AppColors.textPrimary)
+
+            TextField("e.g., Run three times this week", text: $goalTitle, axis: .vertical)
+                .textFieldStyle(PactTextFieldStyle())
+                .focused($focusedField, equals: .goal)
+
+            TextField("What would count as progress?", text: $target, axis: .vertical)
+                .textFieldStyle(PactTextFieldStyle())
+                .focused($focusedField, equals: .target)
+
+            TextField("Small action for today", text: $nextAction, axis: .vertical)
+                .textFieldStyle(PactTextFieldStyle())
+                .focused($focusedField, equals: .action)
+        }
+    }
+
+    private var templatePicker: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Pick a starting point")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundColor(AppColors.textPrimary)
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                ForEach(onboardingTemplates) { template in
+                    Button {
+                        selectedTemplate = template
+                        applyTemplate(template)
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: template.icon)
+                                .font(.system(size: 15, weight: .semibold))
+                                .frame(width: 28, height: 28)
+                                .background(template == selectedTemplate ? AppColors.accentGlowStrong : AppColors.backgroundElevated)
+                                .clipShape(RoundedRectangle(cornerRadius: 9))
+
+                            Text(template.title)
+                                .font(.system(size: 14, weight: .bold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)
+
+                            Spacer(minLength: 0)
+                        }
+                        .foregroundColor(template == selectedTemplate ? AppColors.accentStrong : AppColors.textSecondary)
+                        .padding(12)
+                        .background(template == selectedTemplate ? AppColors.accentGlow : AppColors.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(template == selectedTemplate ? AppColors.accentLight : AppColors.border, lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }
-}
 
-// MARK: - Screen 1: Core Value + Visual
-struct OnboardingScreen1: View {
-    @State private var cardScale: CGFloat = 0.96
-    @State private var cardOpacity: Double = 0
-    @State private var cardEntranceOffset: CGFloat = 18
-    @State private var cardFloatOffset: CGFloat = 0
-    @State private var textOpacity: Double = 0
-    @State private var progressFill: CGFloat = 0
+    private var cadencePicker: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("How often do you want to check in?")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundColor(AppColors.textPrimary)
 
-    var body: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 18)
+            HStack(spacing: 8) {
+                cadenceButton(.daily, title: "Daily")
+                cadenceButton(.weekdays, title: "Weekdays")
+                cadenceButton(.custom, title: "Custom")
+            }
 
-            OnboardingPreviewCard(progress: progressFill)
-                .scaleEffect(1.03 * cardScale)
-                .opacity(cardOpacity)
-                .offset(y: -40 + cardEntranceOffset + cardFloatOffset)
-                .padding(.horizontal, 28)
-                .padding(.bottom, 30)
+            if cadence == .custom {
+                HStack(spacing: 7) {
+                    ForEach(weekdayOptions, id: \.value) { weekday in
+                        Button {
+                            toggleWeekday(weekday.value)
+                        } label: {
+                            Text(weekday.label)
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(customWeekdays.contains(weekday.value) ? .white : AppColors.textSecondary)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 34)
+                                .background(customWeekdays.contains(weekday.value) ? AppColors.accentStrong : AppColors.backgroundElevated)
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
 
-            VStack(spacing: 12) {
-                Text("Lock your goals.\nNo going back.")
+    private func cadenceButton(_ value: GoalCadence, title: String) -> some View {
+        Button {
+            cadence = value
+        } label: {
+            Text(title)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(cadence == value ? .white : AppColors.textSecondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(cadence == value ? AppColors.accentStrong : AppColors.backgroundElevated)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var reviewDatePicker: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Choose a review date")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundColor(AppColors.textPrimary)
+
+            DatePicker(
+                "Review date",
+                selection: $reviewDate,
+                in: Date().addingTimeInterval(86400)...,
+                displayedComponents: .date
+            )
+            .datePickerStyle(.compact)
+            .tint(AppColors.accentStrong)
+            .padding(14)
+            .background(AppColors.backgroundElevated)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+        }
+    }
+
+    private var createButton: some View {
+        Button {
+            createTrialGoal()
+        } label: {
+            Text("Create Trial Goal")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 17)
+                .background(canCreateGoal ? AppColors.accentStrong : AppColors.textMuted)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .disabled(!canCreateGoal)
+        .padding(.top, 4)
+    }
+
+    private func reminderStep(for pact: Pact) -> some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            Image(systemName: "bell.badge")
+                .font(.system(size: 34, weight: .semibold))
+                .foregroundColor(AppColors.accent)
+                .frame(width: 84, height: 84)
+                .background(AppColors.accentGlow)
+                .clipShape(RoundedRectangle(cornerRadius: 24))
+
+            VStack(spacing: 10) {
+                Text("Your trial goal is ready")
                     .font(.system(size: 30, weight: .bold))
                     .foregroundColor(AppColors.textPrimary)
-                    .tracking(-0.6)
+                    .tracking(-0.5)
                     .multilineTextAlignment(.center)
 
-                Text("This cannot be undone.")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(AppColors.textSecondary.opacity(0.8))
-                    .multilineTextAlignment(.center)
-            }
-            .opacity(textOpacity)
-            .padding(.horizontal, 40)
-
-            Spacer()
-        }
-        .padding(.top, 8)
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.30)) {
-                cardScale = 1.0
-                cardOpacity = 1
-                cardEntranceOffset = 0
-            }
-
-            withAnimation(.easeOut(duration: 0.30).delay(0.05)) {
-                progressFill = 0.25
-            }
-
-            withAnimation(.easeOut(duration: 0.30).delay(0.14)) {
-                textOpacity = 1
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                withAnimation(.easeInOut(duration: 3.6).repeatForever(autoreverses: true)) {
-                    progressFill = 0.30
-                }
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
-                withAnimation(.easeInOut(duration: 5.2).repeatForever(autoreverses: true)) {
-                    cardFloatOffset = -5
-                }
-            }
-        }
-    }
-}
-
-private struct OnboardingPreviewCard: View {
-    let progress: CGFloat
-    @State private var badgeScale: CGFloat = 1.0
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(Color(hex: "7FB77E").opacity(0.07))
-                .frame(width: 320, height: 320)
-                .blur(radius: 56)
-
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Run a Marathon")
-                            .font(.system(size: 21, weight: .bold))
-                            .foregroundColor(AppColors.textPrimary)
-                            .tracking(-0.25)
-
-                        GeometryReader { proxy in
-                            ZStack(alignment: .leading) {
-                                Capsule()
-                                    .fill(Color(hex: "E5E7EB"))
-
-                                Capsule()
-                                    .fill(Color(hex: "7FB77E"))
-                                    .frame(width: proxy.size.width * max(0, min(progress, 1)))
-                            }
-                        }
-                        .frame(height: 6)
-
-                        HStack(spacing: 6) {
-                            Image(systemName: "clock")
-                                .font(.system(size: 12, weight: .semibold))
-
-                            Text("103 days left")
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                        .foregroundColor(AppColors.textSecondary)
-                    }
-
-                    Spacer()
-
-                    HStack(spacing: 5) {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 10, weight: .bold))
-
-                        Text("Locked")
-                            .font(.system(size: 12, weight: .semibold))
-                    }
-                    .foregroundColor(Color(hex: "2E7D32"))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color(hex: "E6F4EA"))
-                    .clipShape(Capsule())
-                    .scaleEffect(badgeScale)
-                }
-            }
-            .frame(maxWidth: .infinity, minHeight: 124, alignment: .topLeading)
-            .padding(18)
-            .background(Color(hex: "FFFFFF"))
-            .cornerRadius(18)
-            .overlay(
-                RoundedRectangle(cornerRadius: 18)
-                    .stroke(AppColors.borderLight, lineWidth: 1)
-            )
-            .shadow(color: Color.black.opacity(0.12), radius: 40, x: 0, y: 20)
-            .rotationEffect(.degrees(-1.0))
-        }
-        .task {
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 5_600_000_000)
-                withAnimation(.easeInOut(duration: 0.40)) {
-                    badgeScale = 1.03
-                }
-                try? await Task.sleep(nanoseconds: 400_000_000)
-                withAnimation(.easeInOut(duration: 0.40)) {
-                    badgeScale = 1.0
-                }
-            }
-        }
-    }
-}
-
-private struct PressScaleButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
-    }
-}
-
-// MARK: - Screen 2: Monetization + Clarity
-struct OnboardingScreen2: View {
-    let onStartTapped: () -> Void
-    let onViewOptions: () -> Void
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
-
-            VStack(spacing: 16) {
-                Text("Start with 1 free commitment.")
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(AppColors.textPrimary)
-                    .tracking(-0.6)
-                    .multilineTextAlignment(.center)
-
-                Text("Use it when you're serious.\nYou can unlock more anytime.")
+                Text("A gentle reminder can bring you back for the check-in you just set up.")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(AppColors.textSecondary)
                     .multilineTextAlignment(.center)
-                    .lineSpacing(4)
+                    .lineSpacing(5)
             }
-            .padding(.horizontal, 40)
-
-            Spacer()
 
             VStack(spacing: 12) {
                 Button {
-                    let generator = UIImpactFeedbackGenerator(style: .medium)
-                    generator.impactOccurred()
-                    onStartTapped()
+                    Task {
+                        isRequestingReminders = true
+                        await ReminderManager.requestPermissionAndSchedule(for: pact)
+                        isRequestingReminders = false
+                        isPresented = false
+                    }
                 } label: {
-                    Text("Make My First Commitment")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        .background(AppColors.accentStrong)
-                        .cornerRadius(16)
-                        .shadow(color: AppColors.accent.opacity(0.16), radius: 12, x: 0, y: 4)
+                    HStack {
+                        if isRequestingReminders {
+                            ProgressView()
+                                .tint(.white)
+                        }
+
+                        Text("Enable Reminders")
+                            .font(.system(size: 16, weight: .bold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 17)
+                    .background(AppColors.accentStrong)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
                 }
                 .buttonStyle(.plain)
+                .disabled(isRequestingReminders)
 
                 Button {
-                    onViewOptions()
+                    isPresented = false
                 } label: {
-                    Text("See plans")
-                        .font(.system(size: 15, weight: .medium))
+                    Text("Not Now")
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(AppColors.textSecondary)
-                        .padding(.vertical, 6)
+                        .padding(.vertical, 8)
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 32)
-            .padding(.bottom, 50)
+
+            Spacer()
+        }
+        .padding(32)
+    }
+
+    private func applyTemplate(_ template: OnboardingGoalTemplate) {
+        goalTitle = template.exampleGoal
+        target = template.measurableTarget
+        nextAction = template.nextAction
+    }
+
+    private func toggleWeekday(_ weekday: Int) {
+        if customWeekdays.contains(weekday), customWeekdays.count > 1 {
+            customWeekdays.remove(weekday)
+        } else {
+            customWeekdays.insert(weekday)
         }
     }
+
+    private func createTrialGoal() {
+        focusedField = nil
+
+        let pact = pactStore.createPact(
+            title: goalTitle.trimmingCharacters(in: .whitespacesAndNewlines),
+            why: nil,
+            measurableTarget: target.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : target.trimmingCharacters(in: .whitespacesAndNewlines),
+            nextAction: nextAction,
+            cadence: cadence,
+            reminderWeekdays: cadence == .custom ? Array(customWeekdays) : nil,
+            targetDate: reviewDate
+        )
+
+        createdPact = pact
+    }
 }
+
+private enum OnboardingField: Hashable {
+    case goal
+    case target
+    case action
+}
+
+private let onboardingTemplates: [OnboardingGoalTemplate] = [
+    OnboardingGoalTemplate(
+        id: "fitness",
+        title: "Fitness",
+        icon: "figure.run",
+        exampleGoal: "Move my body consistently",
+        measurableTarget: "Complete 20 minutes of movement on check-in days.",
+        nextAction: "Walk for 20 minutes today."
+    ),
+    OnboardingGoalTemplate(
+        id: "study",
+        title: "Study",
+        icon: "book.closed",
+        exampleGoal: "Study without falling behind",
+        measurableTarget: "Complete one focused study block on check-in days.",
+        nextAction: "Do one 25-minute study session."
+    ),
+    OnboardingGoalTemplate(
+        id: "money",
+        title: "Money",
+        icon: "banknote",
+        exampleGoal: "Spend more intentionally",
+        measurableTarget: "Review spending and avoid one unnecessary purchase.",
+        nextAction: "Check today's spending once."
+    ),
+    OnboardingGoalTemplate(
+        id: "focus",
+        title: "Focus",
+        icon: "timer",
+        exampleGoal: "Protect deep work time",
+        measurableTarget: "Complete one distraction-free focus block.",
+        nextAction: "Start one 30-minute focus block."
+    ),
+    OnboardingGoalTemplate(
+        id: "personal",
+        title: "Personal",
+        icon: "person.crop.circle",
+        exampleGoal: "Show up for myself",
+        measurableTarget: "Do one small action that supports this change.",
+        nextAction: "Choose the smallest useful step."
+    )
+]
+
+private let weekdayOptions: [(label: String, value: Int)] = [
+    ("S", 1),
+    ("M", 2),
+    ("T", 3),
+    ("W", 4),
+    ("T", 5),
+    ("F", 6),
+    ("S", 7)
+]
 
 #Preview {
     OnboardingView(isPresented: .constant(true))
         .environmentObject(PactStore())
-        .environmentObject(StoreKitManager())
 }

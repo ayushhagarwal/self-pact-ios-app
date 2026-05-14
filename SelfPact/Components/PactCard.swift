@@ -8,20 +8,29 @@ struct PactCard: View {
     
     private var accentColor: Color {
         if pact.status == .sealed {
-            return AppColors.accent
+            return pact.isOverdue ? AppColors.review : AppColors.commitment
         } else if pact.status == .completed {
-            return AppColors.accentLight
+            return AppColors.success
         }
         return AppColors.border
     }
     
     private var iconBackgroundColor: Color {
         if pact.status == .sealed {
-            return AppColors.accentGlow
+            return pact.isOverdue ? AppColors.reviewGlow : AppColors.commitmentGlow
         } else if pact.status == .completed {
-            return AppColors.accentGlow
+            return AppColors.successGlow
         }
         return AppColors.backgroundElevated
+    }
+
+    private var iconColor: Color {
+        if pact.status == .sealed {
+            return pact.isOverdue ? AppColors.review : AppColors.commitment
+        } else if pact.status == .completed {
+            return AppColors.success
+        }
+        return AppColors.textSecondary
     }
     
     var body: some View {
@@ -56,7 +65,7 @@ struct PactCard: View {
                                 }
                             }
                             .font(.system(size: 12))
-                            .foregroundColor(pact.status == .draft ? AppColors.textSecondary : AppColors.accent)
+                            .foregroundColor(iconColor)
                         }
                         
                         Text(pact.title)
@@ -92,7 +101,7 @@ struct PactCard: View {
                         ProgressBar(
                             progress: pact.timeProgress,
                             height: 3,
-                            color: AppColors.accent,
+                            color: pact.isOverdue ? AppColors.review : AppColors.commitment,
                             trackColor: AppColors.border
                         )
                         
@@ -127,10 +136,10 @@ struct PactCard: View {
                         HStack {
                             Text(outcomeText(outcome))
                                 .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(outcome == .yes ? AppColors.accent : AppColors.textSecondary)
+                                .foregroundColor(outcomeColor(outcome))
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
-                                .background(outcome == .yes ? AppColors.accentGlow : AppColors.backgroundElevated)
+                                .background(outcomeBackground(outcome))
                                 .cornerRadius(8)
                             
                             Spacer()
@@ -160,6 +169,22 @@ struct PactCard: View {
         case .yes: return "Achieved"
         case .partially: return "Partial"
         case .notYet: return "Reflected"
+        }
+    }
+
+    private func outcomeColor(_ outcome: PactOutcome) -> Color {
+        switch outcome {
+        case .yes: return AppColors.success
+        case .partially: return AppColors.warning
+        case .notYet: return AppColors.textSecondary
+        }
+    }
+
+    private func outcomeBackground(_ outcome: PactOutcome) -> Color {
+        switch outcome {
+        case .yes: return AppColors.successGlow
+        case .partially: return AppColors.warningGlow
+        case .notYet: return AppColors.backgroundElevated
         }
     }
 }

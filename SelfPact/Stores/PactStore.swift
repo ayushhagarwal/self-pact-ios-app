@@ -25,6 +25,18 @@ class PactStore: ObservableObject {
     var sealedPacts: [Pact] {
         pacts.filter { $0.status == .sealed }
     }
+
+    var activeTodayPact: Pact? {
+        pacts
+            .filter { $0.status != .completed }
+            .sorted { lhs, rhs in
+                if lhs.status != rhs.status {
+                    return lhs.status == .sealed
+                }
+                return lhs.targetDate < rhs.targetDate
+            }
+            .first
+    }
     
     var completedPacts: [Pact] {
         pacts.filter { $0.status == .completed }
@@ -65,13 +77,28 @@ class PactStore: ObservableObject {
         }
     }
     
+    var hasUsedFreeLock: Bool {
+        pacts.contains { $0.status == .sealed || $0.status == .completed }
+    }
+
     // MARK: - Pact Operations
-    
-    func createPact(title: String, why: String?, measurableTarget: String?, targetDate: Date) -> Pact {
+
+    func createPact(
+        title: String,
+        why: String?,
+        measurableTarget: String?,
+        nextAction: String? = nil,
+        cadence: GoalCadence? = nil,
+        reminderWeekdays: [Int]? = nil,
+        targetDate: Date
+    ) -> Pact {
         let newPact = Pact(
             title: title,
             why: why,
             measurableTarget: measurableTarget,
+            nextAction: sanitizedOptional(nextAction),
+            cadence: cadence,
+            reminderWeekdays: normalizedReminderWeekdays(for: cadence, weekdays: reminderWeekdays),
             targetDate: targetDate
         )
         pacts.insert(newPact, at: 0)
@@ -82,20 +109,24 @@ class PactStore: ObservableObject {
     // MARK: - Seal Pact (Atomic & Crash-Safe)
     // SECURITY: Credit deducted BEFORE pact sealing to prevent race condition exploit
     func sealPact(id: String) -> Bool {
-        // Guard: Must have credits
-        guard userData.creditCount > 0 else { return false }
-        
         // Find pact index
         guard let index = pacts.firstIndex(where: { $0.id == id }) else { return false }
         
         // Guard: Can only seal draft pacts
         guard pacts[index].status == .draft else { return false }
+
+        let shouldConsumeCredit = hasUsedFreeLock
+
+        // Guard: First lock is free; later locks require Lock Mode credits.
+        guard !shouldConsumeCredit || userData.creditCount > 0 else { return false }
         
-        // CRITICAL: Deduct credit FIRST to prevent force-quit exploit
-        userData.creditCount -= 1
-        // Enforce non-negative credits
-        userData.creditCount = max(userData.creditCount, 0)
-        saveUserData()
+        if shouldConsumeCredit {
+            // CRITICAL: Deduct credit FIRST to prevent force-quit exploit
+            userData.creditCount -= 1
+            // Enforce non-negative credits
+            userData.creditCount = max(userData.creditCount, 0)
+            saveUserData()
+        }
         
         // Now seal the pact
         pacts[index].isSealed = true
@@ -124,8 +155,15 @@ class PactStore: ObservableObject {
     }
     
     func deletePact(id: String) {
+        let removedPacts = pacts.filter { $0.id == id }
         pacts.removeAll { $0.id == id }
         savePacts()
+
+        for pact in removedPacts {
+            Task {
+                await ReminderManager.cancelReminders(for: pact.id)
+            }
+        }
     }
     
     func addCheckIn(pactId: String, progress: Int, note: String?) {
@@ -135,13 +173,76 @@ class PactStore: ObservableObject {
             savePacts()
         }
     }
+
+    func addTodayCheckIn(pactId: String, progress: Int, note: String?, nextAction: String?) {
+        if let index = pacts.firstIndex(where: { $0.id == pactId }) {
+            let checkIn = CheckIn(progress: progress, note: note)
+            if let existingIndex = pacts[index].checkIns.lastIndex(where: {
+                Calendar.current.isDate($0.date, inSameDayAs: Date())
+            }) {
+                pacts[index].checkIns[existingIndex] = checkIn
+            } else {
+                pacts[index].checkIns.append(checkIn)
+            }
+            pacts[index].nextAction = sanitizedOptional(nextAction)
+            savePacts()
+        }
+    }
+
+    func updateNextAction(pactId: String, nextAction: String?) {
+        if let index = pacts.firstIndex(where: { $0.id == pactId }) {
+            pacts[index].nextAction = sanitizedOptional(nextAction)
+            savePacts()
+        }
+    }
+
+    func updateCadence(pactId: String, cadence: GoalCadence, reminderWeekdays: [Int]? = nil) {
+        if let index = pacts.firstIndex(where: { $0.id == pactId }) {
+            pacts[index].cadence = cadence
+            pacts[index].reminderWeekdays = normalizedReminderWeekdays(for: cadence, weekdays: reminderWeekdays)
+            savePacts()
+        }
+    }
+
+    func lastCheckIn(for pact: Pact) -> CheckIn? {
+        pact.checkIns.max { $0.date < $1.date }
+    }
+
+    func currentStreak(for pact: Pact) -> Int {
+        let calendar = Calendar.current
+        let activeDays = Set(
+            pact.checkIns
+                .filter { $0.progress > 0 }
+                .map { calendar.startOfDay(for: $0.date) }
+        )
+
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
+        var cursor = activeDays.contains(today) ? today : yesterday
+        var streak = 0
+
+        while activeDays.contains(cursor) {
+            streak += 1
+            guard let previousDay = calendar.date(byAdding: .day, value: -1, to: cursor) else {
+                break
+            }
+            cursor = previousDay
+        }
+
+        return streak
+    }
     
     func completePact(id: String, outcome: PactOutcome, reflection: String? = nil) {
         if let index = pacts.firstIndex(where: { $0.id == id }) {
             pacts[index].status = .completed
             pacts[index].outcome = outcome
             pacts[index].reflection = reflection
+            let completedPactId = pacts[index].id
             savePacts()
+
+            Task {
+                await ReminderManager.cancelReminders(for: completedPactId)
+            }
         }
     }
     
@@ -162,5 +263,25 @@ class PactStore: ObservableObject {
     func setOnboardingSeen() {
         userData.hasSeenOnboarding = true
         saveUserData()
+    }
+
+    private func sanitizedOptional(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func normalizedReminderWeekdays(for cadence: GoalCadence?, weekdays: [Int]?) -> [Int]? {
+        switch cadence {
+        case .daily:
+            return [1, 2, 3, 4, 5, 6, 7]
+        case .weekdays:
+            return [2, 3, 4, 5, 6]
+        case .custom:
+            let selected = Array(Set(weekdays ?? [])).filter { (1...7).contains($0) }.sorted()
+            return selected.isEmpty ? [2, 3, 4, 5, 6] : selected
+        case nil:
+            return nil
+        }
     }
 }

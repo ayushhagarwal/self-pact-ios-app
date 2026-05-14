@@ -77,7 +77,7 @@ struct PurchaseView: View {
             }
         } message: {
             if let product = selectedProduct {
-                Text("\(product.credits) commitment\(product.credits > 1 ? "s" : "") added to your account.")
+                Text("\(product.credits) Lock Mode credit\(product.credits > 1 ? "s" : "") added to your account.")
             }
         }
         .alert("Restored!", isPresented: $showRestoreSuccessAlert) {
@@ -86,7 +86,7 @@ struct PurchaseView: View {
                 onPurchaseComplete?()
             }
         } message: {
-            Text("\(storeKit.restoredCredits) commitment\(storeKit.restoredCredits > 1 ? "s" : "") restored to your account.")
+            Text("\(storeKit.restoredCredits) Lock Mode credit\(storeKit.restoredCredits > 1 ? "s" : "") restored to your account.")
         }
         .alert("Error", isPresented: $showErrorAlert) {
             Button("OK", role: .cancel) { }
@@ -169,7 +169,7 @@ struct PurchaseView: View {
             }
             .padding(.bottom, 24)
             
-            Text("Lock Your\nCommitment")
+            Text("Unlock\nLock Mode")
                 .font(.system(size: 34, weight: .bold))
                 .foregroundColor(AppColors.textPrimary)
                 .tracking(-1.2)
@@ -177,7 +177,7 @@ struct PurchaseView: View {
                 .lineSpacing(0)
                 .padding(.bottom, 12)
             
-            Text("Locking makes your goal permanent.\nThis is your commitment to yourself.")
+            Text("Your first lock is free.\nUse Lock Mode when you want stronger commitment.")
                 .font(.system(size: 15, weight: .medium))
                 .foregroundColor(AppColors.textSecondary)
                 .tracking(-0.1)
@@ -191,7 +191,7 @@ struct PurchaseView: View {
                     .font(.system(size: 13))
                     .foregroundColor(AppColors.accent)
                 
-                Text("\(pactStore.userData.creditCount) commitment\(pactStore.userData.creditCount != 1 ? "s" : "") available")
+                Text("\(pactStore.userData.creditCount) Lock Mode credit\(pactStore.userData.creditCount != 1 ? "s" : "") available")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(AppColors.accent)
             }
@@ -218,7 +218,7 @@ struct PurchaseView: View {
                             .font(.system(size: 11))
                             .foregroundColor(AppColors.accent.opacity(0.7))
                         
-                        Text("Most people choose 5")
+                        Text("For people locking multiple goals")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(AppColors.textTertiary)
                             .italic()
@@ -330,7 +330,7 @@ struct PurchaseView: View {
     // MARK: - Disclaimer
     
     private var disclaimer: some View {
-        Text("Commitments are consumable. Restore only recovers unprocessed purchases. Used commitments cannot be refunded or restored.")
+        Text("Lock Mode credits are consumable. Restore only recovers unprocessed purchases. Used credits cannot be refunded or restored.")
             .font(.system(size: 11))
             .foregroundColor(AppColors.textMuted)
             .multilineTextAlignment(.center)

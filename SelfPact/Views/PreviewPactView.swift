@@ -9,6 +9,7 @@ struct PreviewPactView: View {
     
     @State private var showSealAnimation = false
     @State private var isSealingInProgress = false
+    @State private var showPurchase = false
     
     private var pact: Pact? {
         pactStore.getPact(id: pactId)
@@ -16,6 +17,10 @@ struct PreviewPactView: View {
     
     private var hasCredits: Bool {
         pactStore.userData.creditCount > 0
+    }
+
+    private var needsLockModeUpgrade: Bool {
+        pactStore.hasUsedFreeLock && !hasCredits
     }
     
     var body: some View {
@@ -46,6 +51,9 @@ struct PreviewPactView: View {
         .navigationTitle("Lock Goal")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(showSealAnimation)
+        .sheet(isPresented: $showPurchase) {
+            PurchaseView()
+        }
     }
     
     // MARK: - Main Content
@@ -137,9 +145,13 @@ struct PreviewPactView: View {
             
             // Seal button
             Button {
-                handleSeal()
+                if needsLockModeUpgrade {
+                    showPurchase = true
+                } else {
+                    handleSeal()
+                }
             } label: {
-                Text("Lock Goal")
+                Text(needsLockModeUpgrade ? "Unlock Lock Mode" : "Lock Goal")
                     .font(.system(size: 16, weight: .bold))
                     .tracking(-0.2)
                     .foregroundColor(.white)
@@ -150,13 +162,17 @@ struct PreviewPactView: View {
                     .shadow(color: AppColors.accent.opacity(0.16), radius: 10, x: 0, y: 4)
             }
             .buttonStyle(.plain)
-            .disabled(isSealingInProgress || (!hasCredits))
+            .disabled(isSealingInProgress)
             .opacity(isSealingInProgress ? 0.6 : 1.0)
 
-            if !hasCredits {
-                Text("1 lock required")
+            if needsLockModeUpgrade {
+                Text("Lock Mode starts after your first locked goal.")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(AppColors.textMuted)
+            } else if !pactStore.hasUsedFreeLock {
+                Text("Your first locked goal is free.")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppColors.accent)
             }
 
             Text("This cannot be edited after locking")
@@ -214,15 +230,17 @@ struct PreviewPactView: View {
     // SECURITY: Double-tap protection to prevent negative credits
     private func handleSeal() {
         guard !isSealingInProgress else { return }
-        guard hasCredits else {
-            // Navigate to purchase
-            return
-        }
+        guard !needsLockModeUpgrade else { showPurchase = true; return }
         
         isSealingInProgress = true
         
         let success = pactStore.sealPact(id: pactId)
         if success {
+            if let pact = pactStore.getPact(id: pactId) {
+                Task {
+                    await ReminderManager.scheduleReminder(for: pact)
+                }
+            }
             showSealAnimation = true
             // isSealingInProgress will reset when animation completes and view dismisses
         } else {

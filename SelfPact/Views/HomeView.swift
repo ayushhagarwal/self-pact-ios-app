@@ -1,75 +1,85 @@
 import SwiftUI
 
-enum FilterType: String, CaseIterable {
-    case all = "All"
-    case sealed = "Locked"
-    case draft = "Drafts"
-    case completed = "Completed"
+private enum TodayCheckInOutcome: CaseIterable, Equatable {
+    case didIt
+    case partial
+    case missed
+
+    var title: String {
+        switch self {
+        case .didIt: return "Did it"
+        case .partial: return "Partial"
+        case .missed: return "Missed"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .didIt: return "checkmark"
+        case .partial: return "circle.lefthalf.filled"
+        case .missed: return "xmark"
+        }
+    }
+
+    var progress: Int {
+        switch self {
+        case .didIt: return 100
+        case .partial: return 50
+        case .missed: return 0
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .didIt: return AppColors.success
+        case .partial: return AppColors.warning
+        case .missed: return AppColors.error
+        }
+    }
+}
+
+private enum TodayField: Hashable {
+    case nextAction
+    case reflection
 }
 
 struct HomeView: View {
     @EnvironmentObject var pactStore: PactStore
-    @State private var activeFilter: FilterType = .all
+
     @State private var showCreatePact = false
-    @State private var navigationPath = NavigationPath()
     @State private var revealPactId: String?
-    @State private var fabScale: CGFloat = 1
-    
-    private var filteredPacts: [Pact] {
-        switch activeFilter {
-        case .all: return pactStore.pacts
-        case .sealed: return pactStore.sealedPacts
-        case .draft: return pactStore.draftPacts
-        case .completed: return pactStore.completedPacts
-        }
+    @State private var selectedOutcome: TodayCheckInOutcome?
+    @State private var nextActionDraft = ""
+    @State private var reflectionNote = ""
+    @State private var showSavedState = false
+    @FocusState private var focusedField: TodayField?
+
+    private var activePact: Pact? {
+        pactStore.activeTodayPact
     }
-    
+
     var body: some View {
         ZStack {
             AppColors.backgroundGradient
                 .ignoresSafeArea()
-            
+
             ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    // Header section
+                VStack(alignment: .leading, spacing: 18) {
                     headerSection
-                    
-                    // Reveal banner
+
                     if !pactStore.revealablePacts.isEmpty {
                         revealBanner
                     }
-                    
-                    // Filter row
-                    filterRow
-                    
-                    // Pact list
-                    if filteredPacts.isEmpty && !pactStore.isLoading {
-                        emptyState
+
+                    if let activePact {
+                        todaySection(for: activePact)
                     } else {
-                        pactList
+                        emptyTodayState
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 100)
+                .padding(.bottom, 60)
             }
-            .refreshable {
-                // Refresh logic
-                try? await Task.sleep(nanoseconds: 500_000_000)
-            }
-            
-            // FAB
-            VStack {
-                Spacer()
-                HStack {
-                    Spacer()
-                    fabButton
-                }
-            }
-            .padding(.trailing, 20)
-            .padding(.bottom, 24)
-        }
-        .navigationDestination(for: String.self) { pactId in
-            PactDetailView(pactId: pactId)
         }
         .sheet(isPresented: $showCreatePact) {
             CreatePactView()
@@ -77,51 +87,54 @@ struct HomeView: View {
         .fullScreenCover(item: $revealPactId) { id in
             RevealView(pactId: id)
         }
+        .onAppear {
+            syncNextActionDraft()
+        }
+        .onChange(of: activePact?.id) { _, _ in
+            syncNextActionDraft()
+            resetCheckInComposer()
+        }
     }
-    
-    // MARK: - Header Section
-    
-    private var headerSection: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("GoalLock")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(AppColors.textSecondary)
-                    .tracking(0.4)
 
-                Text("Your Goals")
-                    .font(.system(size: 28, weight: .bold))
+    // MARK: - Header
+
+    private var headerSection: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Today")
+                    .font(.system(size: 32, weight: .bold))
                     .foregroundColor(AppColors.textPrimary)
-                    .tracking(-0.4)
+                    .tracking(-0.5)
+
+                Text(Date().formatted(.dateTime.weekday(.wide).month(.wide).day()))
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(AppColors.textSecondary)
             }
-            
+
             Spacer()
-            
-            // Credit chip
-            HStack(spacing: 5) {
-                Image(systemName: "shield.fill")
-                    .font(.system(size: 12))
-                    .foregroundColor(AppColors.accent)
-                
-                Text("\(pactStore.userData.creditCount)")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(AppColors.accent)
+
+            Button {
+                showCreatePact = true
+            } label: {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(AppColors.accentStrong)
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: "plus")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundColor(.white)
+                }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(AppColors.accentGlow)
-            .cornerRadius(16)
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(AppColors.accentLight.opacity(0.6), lineWidth: 1)
-            )
+            .buttonStyle(.plain)
+            .accessibilityLabel("Create a goal")
         }
         .padding(.top, 12)
-        .padding(.bottom, 18)
+        .padding(.bottom, 2)
     }
-    
-    // MARK: - Reveal Banner
-    
+
+    // MARK: - Reveal
+
     private var revealBanner: some View {
         Button {
             if let firstPact = pactStore.revealablePacts.first {
@@ -129,174 +142,562 @@ struct HomeView: View {
             }
         } label: {
             HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(AppColors.accentGlowStrong)
-                        .frame(width: 36, height: 36)
-                    
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 14))
-                        .foregroundColor(AppColors.accent)
-                }
-                
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(pactStore.revealablePacts.count == 1 ? "1 goal ready to review" : "\(pactStore.revealablePacts.count) goals ready to review")
+                Image(systemName: "sparkles")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(AppColors.accent)
+                    .frame(width: 36, height: 36)
+                    .background(AppColors.accentGlowStrong)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(pactStore.revealablePacts.count == 1 ? "1 goal is ready to review" : "\(pactStore.revealablePacts.count) goals are ready to review")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(AppColors.textPrimary)
-                        .tracking(-0.1)
-                    
-                    Text("Tap to review")
+
+                    Text("Close the loop and record what happened.")
                         .font(.system(size: 12))
                         .foregroundColor(AppColors.textSecondary)
                 }
-                
+
                 Spacer()
-                
-                ZStack {
-                    Circle()
-                        .fill(AppColors.accentGlowStrong)
-                        .frame(width: 28, height: 28)
-                    
-                    Text("→")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(AppColors.accent)
-                }
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(AppColors.accent)
             }
             .padding(14)
-            .background(AppColors.backgroundElevated)
-            .cornerRadius(16)
+            .background(AppColors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(AppColors.border, lineWidth: 1)
+                    .stroke(AppColors.accentLight.opacity(0.55), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
-        .padding(.bottom, 18)
     }
-    
-    // MARK: - Filter Row
-    
-    private var filterRow: some View {
-        HStack(spacing: 8) {
-            ForEach(FilterType.allCases, id: \.self) { filter in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        activeFilter = filter
-                    }
-                } label: {
-                    Text(filter.rawValue)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(activeFilter == filter ? AppColors.accent : AppColors.textSecondary)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(activeFilter == filter ? AppColors.accentGlowStrong : AppColors.backgroundElevated)
-                        .cornerRadius(16)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(activeFilter == filter ? AppColors.accentLight.opacity(0.7) : AppColors.border, lineWidth: 1)
-                        )
+
+    // MARK: - Today
+
+    private func todaySection(for pact: Pact) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            activeGoalHeader(for: pact)
+            nextActionCard(for: pact)
+
+            if pact.status == .sealed && pact.isReady {
+                reviewReadyCard(for: pact)
+            } else {
+                checkInCard(for: pact)
+            }
+
+            statsRow(for: pact)
+            weeklySummaryCard(for: pact)
+        }
+        .padding(18)
+        .background(AppColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(AppColors.border, lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.04), radius: 12, x: 0, y: 5)
+    }
+
+    private func activeGoalHeader(for pact: Pact) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Label(pact.status == .sealed ? "Active locked goal" : "Trial goal", systemImage: pact.status == .sealed ? "lock.fill" : "target")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(pact.status == .sealed ? AppColors.commitment : AppColors.accent)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(pact.status == .sealed ? AppColors.commitmentGlow : AppColors.accentGlow)
+                    .clipShape(Capsule())
+
+                Spacer()
+
+                NavigationLink(destination: PactDetailView(pactId: pact.id)) {
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(AppColors.textSecondary)
+                        .frame(width: 32, height: 32)
+                        .background(AppColors.backgroundElevated)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Open goal details")
             }
-            Spacer()
+
+            Text(pact.title)
+                .font(.system(size: 24, weight: .bold))
+                .foregroundColor(AppColors.textPrimary)
+                .tracking(-0.35)
+                .lineSpacing(3)
+
+            if let target = pact.measurableTarget, !target.isEmpty {
+                Text(target)
+                    .font(.system(size: 14))
+                    .foregroundColor(AppColors.textSecondary)
+                    .lineLimit(2)
+                    .lineSpacing(4)
+            }
         }
-        .padding(.bottom, 18)
     }
-    
-    // MARK: - Empty State
-    
-    private var emptyState: some View {
-        VStack(spacing: 0) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 24)
-                    .fill(AppColors.backgroundElevated)
-                    .frame(width: 88, height: 88)
-                
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(AppColors.surface)
-                        .frame(width: 56, height: 56)
-                    
-                    Image(systemName: "shield")
-                        .font(.system(size: 28))
+
+    private func nextActionCard(for pact: Pact) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("What is the next small action today?")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundColor(AppColors.textPrimary)
+
+            TextField("e.g., Walk 20 minutes before lunch", text: $nextActionDraft, axis: .vertical)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(AppColors.textPrimary)
+                .lineLimit(1...3)
+                .padding(14)
+                .background(AppColors.backgroundElevated)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(focusedField == .nextAction ? AppColors.accentLight : AppColors.border, lineWidth: 1)
+                )
+                .focused($focusedField, equals: .nextAction)
+
+            if nextActionHasChanges(for: pact) {
+                HStack {
+                    Spacer()
+
+                    Button {
+                        pactStore.updateNextAction(pactId: pact.id, nextAction: nextActionDraft)
+                        rescheduleReminders(for: pact.id)
+                        focusedField = nil
+                    } label: {
+                        Text("Save action")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(AppColors.accent)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(AppColors.accentGlow)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(14)
+        .background(AppColors.backgroundElevated.opacity(0.7))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func checkInCard(for pact: Pact) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(hasCheckedInToday(pact) ? "Today is logged" : "Log today")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundColor(AppColors.textPrimary)
+
+                    Text(hasCheckedInToday(pact) ? "You can update it if the day changed." : "One tap is enough. Details can come after.")
+                        .font(.system(size: 13))
+                        .foregroundColor(AppColors.textSecondary)
+                }
+
+                Spacer()
+
+                if showSavedState {
+                    Label("Saved", systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 12, weight: .bold))
                         .foregroundColor(AppColors.accent)
                 }
             }
-            .padding(.bottom, 24)
-            
-            Text("No goals yet")
-                .font(.system(size: 22, weight: .bold))
+
+            HStack(spacing: 8) {
+                ForEach(TodayCheckInOutcome.allCases, id: \.self) { outcome in
+                    checkInButton(outcome, pact: pact)
+                }
+            }
+
+            if let selectedOutcome {
+                reflectionComposer(for: pact, outcome: selectedOutcome)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: selectedOutcome)
+    }
+
+    private func checkInButton(_ outcome: TodayCheckInOutcome, pact: Pact) -> some View {
+        Button {
+            logTodayCheckIn(for: pact, outcome: outcome)
+        } label: {
+            VStack(spacing: 7) {
+                Image(systemName: outcome.systemImage)
+                    .font(.system(size: 15, weight: .bold))
+
+                Text(outcome.title)
+                    .font(.system(size: 13, weight: .bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            .foregroundColor(selectedOutcome == outcome ? .white : outcome.tint)
+            .frame(maxWidth: .infinity)
+            .frame(height: 68)
+            .background(selectedOutcome == outcome ? outcome.tint : AppColors.backgroundElevated)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(selectedOutcome == outcome ? outcome.tint.opacity(0.25) : AppColors.border, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func reflectionComposer(for pact: Pact, outcome: TodayCheckInOutcome) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("What would make tomorrow easier?")
+                .font(.system(size: 14, weight: .bold))
                 .foregroundColor(AppColors.textPrimary)
-                .tracking(-0.3)
-                .padding(.bottom, 8)
-            
-            Text("Create and lock your first goal")
+
+            TextField("Optional note", text: $reflectionNote, axis: .vertical)
                 .font(.system(size: 15))
+                .foregroundColor(AppColors.textPrimary)
+                .lineLimit(2...4)
+                .padding(14)
+                .background(AppColors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(AppColors.border, lineWidth: 1)
+                )
+                .focused($focusedField, equals: .reflection)
+
+            Button {
+                saveTodayCheckIn(for: pact, outcome: outcome)
+            } label: {
+                Text(reflectionNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Skip Note" : "Save Note")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(AppColors.accentStrong)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(14)
+        .background(AppColors.backgroundElevated)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func reviewReadyCard(for pact: Pact) -> some View {
+        Button {
+            revealPactId = pact.id
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "flag.checkered")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(AppColors.review)
+                    .frame(width: 40, height: 40)
+                    .background(AppColors.reviewGlow)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Ready for review")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(AppColors.textPrimary)
+
+                    Text("This goal has reached its target date.")
+                        .font(.system(size: 13))
+                        .foregroundColor(AppColors.textSecondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(AppColors.review)
+            }
+            .padding(14)
+            .background(AppColors.reviewGlow.opacity(0.72))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func statsRow(for pact: Pact) -> some View {
+        HStack(spacing: 8) {
+            TodayStatTile(
+                icon: "calendar",
+                label: "Days left",
+                value: pact.status == .sealed && pact.isReady ? "Review" : "\(pact.daysRemaining)d"
+            )
+
+            TodayStatTile(
+                icon: "flame",
+                label: "Streak",
+                value: "\(pactStore.currentStreak(for: pact))d"
+            )
+
+            TodayStatTile(
+                icon: "clock",
+                label: "Last",
+                value: lastCheckInText(for: pact)
+            )
+        }
+    }
+
+    private func weeklySummaryCard(for pact: Pact) -> some View {
+        let summary = weeklySummary(for: pact)
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("This week")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(AppColors.textPrimary)
+
+                Spacer()
+
+                Text("\(summary.loggedDays)/7 days")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(AppColors.accent)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(AppColors.accentGlow)
+                    .clipShape(Capsule())
+            }
+
+            HStack(spacing: 10) {
+                WeeklySummaryMetric(label: "Did it", value: "\(summary.didIt)")
+                WeeklySummaryMetric(label: "Partial", value: "\(summary.partial)")
+                WeeklySummaryMetric(label: "Missed", value: "\(summary.missed)")
+            }
+
+            Text(summary.prompt)
+                .font(.system(size: 13))
                 .foregroundColor(AppColors.textSecondary)
-                .multilineTextAlignment(.center)
-                .lineSpacing(4)
-                .padding(.bottom, 28)
-            
+                .lineSpacing(3)
+        }
+        .padding(14)
+        .background(AppColors.backgroundElevated.opacity(0.7))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    // MARK: - Empty
+
+    private var emptyTodayState: some View {
+        VStack(spacing: 18) {
+            Image(systemName: pactStore.draftPacts.isEmpty ? "target" : "lock.open")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundColor(AppColors.accent)
+                .frame(width: 70, height: 70)
+                .background(AppColors.accentGlow)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+
+            VStack(spacing: 8) {
+                Text(pactStore.draftPacts.isEmpty ? "Choose one goal for today" : "Pick up your trial goal")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(AppColors.textPrimary)
+                    .tracking(-0.3)
+                    .multilineTextAlignment(.center)
+
+                Text(pactStore.draftPacts.isEmpty ? "Start with one clear commitment and a small action you can do today." : "You can track for free now and lock it when you want the extra commitment.")
+                    .font(.system(size: 15))
+                    .foregroundColor(AppColors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+            }
+
             Button {
                 showCreatePact = true
             } label: {
-                Text("Create a Goal")
+                Text(pactStore.draftPacts.isEmpty ? "Create a Goal" : "Create Another Goal")
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(.white)
-                    .tracking(-0.1)
-                    .padding(.horizontal, 28)
-                    .padding(.vertical, 14)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 13)
                     .background(AppColors.accentStrong)
-                    .cornerRadius(16)
-                    .shadow(color: AppColors.accent.opacity(0.12), radius: 8, x: 0, y: 4)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
             }
             .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 60)
-        .padding(.horizontal, 40)
+        .padding(28)
+        .background(AppColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(AppColors.border, lineWidth: 1)
+        )
     }
-    
-    // MARK: - Pact List
-    
-    private var pactList: some View {
-        LazyVStack(spacing: 14) {
-            ForEach(filteredPacts) { pact in
-                NavigationLink(destination: PactDetailView(pactId: pact.id)) {
-                    PactCard(pact: pact)
-                }
-                .buttonStyle(.plain)
-            }
+
+    // MARK: - Actions
+
+    private func logTodayCheckIn(for pact: Pact, outcome: TodayCheckInOutcome) {
+        selectedOutcome = outcome
+        reflectionNote = ""
+        focusedField = .reflection
+
+        pactStore.addTodayCheckIn(
+            pactId: pact.id,
+            progress: outcome.progress,
+            note: nil,
+            nextAction: nextActionDraft
+        )
+
+        rescheduleReminders(for: pact.id)
+        syncNextActionDraft()
+        showSavedState = true
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            showSavedState = false
         }
     }
-    
-    // MARK: - FAB Button
-    
-    private var fabButton: some View {
-        Button {
-            withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
-                fabScale = 0.88
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                    fabScale = 1
-                }
-            }
-            showCreatePact = true
-        } label: {
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(AppColors.accentStrong)
-                    .frame(width: 54, height: 54)
-                    .shadow(color: AppColors.accent.opacity(0.18), radius: 12, x: 0, y: 6)
-                
-                Image(systemName: "plus")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(.white)
+
+    private func saveTodayCheckIn(for pact: Pact, outcome: TodayCheckInOutcome) {
+        pactStore.addTodayCheckIn(
+            pactId: pact.id,
+            progress: outcome.progress,
+            note: reflectionNote,
+            nextAction: nextActionDraft
+        )
+
+        rescheduleReminders(for: pact.id)
+        resetCheckInComposer()
+        syncNextActionDraft()
+        focusedField = nil
+        showSavedState = true
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            showSavedState = false
+        }
+    }
+
+    private func syncNextActionDraft() {
+        nextActionDraft = activePact?.nextAction ?? ""
+    }
+
+    private func rescheduleReminders(for pactId: String) {
+        guard let pact = pactStore.getPact(id: pactId) else { return }
+
+        Task {
+            await ReminderManager.scheduleReminder(for: pact)
+        }
+    }
+
+    private func resetCheckInComposer() {
+        selectedOutcome = nil
+        reflectionNote = ""
+    }
+
+    private func nextActionHasChanges(for pact: Pact) -> Bool {
+        nextActionDraft.trimmingCharacters(in: .whitespacesAndNewlines) != (pact.nextAction ?? "")
+    }
+
+    private func hasCheckedInToday(_ pact: Pact) -> Bool {
+        pact.checkIns.contains {
+            Calendar.current.isDate($0.date, inSameDayAs: Date())
+        }
+    }
+
+    private func lastCheckInText(for pact: Pact) -> String {
+        guard let checkIn = pactStore.lastCheckIn(for: pact) else {
+            return "None"
+        }
+
+        if Calendar.current.isDateInToday(checkIn.date) {
+            return "Today"
+        }
+
+        return checkIn.date.formatted(.dateTime.month(.abbreviated).day())
+    }
+
+    private func weeklySummary(for pact: Pact) -> WeeklySummary {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let startDate = calendar.date(byAdding: .day, value: -6, to: today) ?? today
+        let checkIns = pact.checkIns.filter { $0.date >= startDate }
+        let didIt = checkIns.filter { $0.progress >= 100 }.count
+        let partial = checkIns.filter { $0.progress > 0 && $0.progress < 100 }.count
+        let missed = checkIns.filter { $0.progress == 0 }.count
+        let loggedDays = Set(checkIns.map { calendar.startOfDay(for: $0.date) }).count
+
+        let prompt: String
+        if loggedDays == 0 {
+            prompt = "Start with one check-in today. The habit loop should feel light."
+        } else if missed > didIt {
+            prompt = "Look for the smallest version of this action that still counts tomorrow."
+        } else {
+            prompt = "Notice what made the good days easier, then repeat that setup tomorrow."
+        }
+
+        return WeeklySummary(
+            didIt: didIt,
+            partial: partial,
+            missed: missed,
+            loggedDays: loggedDays,
+            prompt: prompt
+        )
+    }
+}
+
+private struct WeeklySummary {
+    let didIt: Int
+    let partial: Int
+    let missed: Int
+    let loggedDays: Int
+    let prompt: String
+}
+
+private struct WeeklySummaryMetric: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(value)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundColor(AppColors.textPrimary)
+
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(AppColors.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(AppColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+private struct TodayStatTile: View {
+    let icon: String
+    let label: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(AppColors.accent)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundColor(AppColors.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+
+                Text(label)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(AppColors.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
         }
-        .buttonStyle(.plain)
-        .scaleEffect(fabScale)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(AppColors.backgroundElevated)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 }
 

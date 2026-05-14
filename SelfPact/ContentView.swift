@@ -10,44 +10,52 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var pactStore = PactStore()
     @StateObject private var storeKitManager = StoreKitManager()
-    @State private var selectedTab: Tab = .pacts
+    @State private var selectedTab: Tab = .today
+    @State private var showSettings = false
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var showOnboarding = false
-    @State private var navigateToCreatePact = false
     
     enum Tab {
-        case pacts
-        case settings
+        case today
+        case goals
     }
     
     var body: some View {
         ZStack {
             // Main app content
             TabView(selection: $selectedTab) {
-                // Pacts Tab
                 NavigationStack {
                     HomeView()
-                        .navigationDestination(isPresented: $navigateToCreatePact) {
-                            CreatePactView()
+                        .toolbar {
+                            profileToolbarButton
                         }
                 }
                 .tabItem {
-                    Label("Goals", systemImage: "shield.fill")
+                    Label("Today", systemImage: "checkmark.circle.fill")
                 }
-                .tag(Tab.pacts)
+                .tag(Tab.today)
                 
-                // Settings Tab
                 NavigationStack {
-                    SettingsView()
+                    GoalsView()
+                        .toolbar {
+                            profileToolbarButton
+                        }
                 }
                 .tabItem {
-                    Label("Settings", systemImage: "gearshape.fill")
+                    Label("Goals", systemImage: "list.bullet.rectangle")
                 }
-                .tag(Tab.settings)
+                .tag(Tab.goals)
             }
             .tint(AppColors.accent)
             .environmentObject(pactStore)
             .environmentObject(storeKitManager)
+            .sheet(isPresented: $showSettings) {
+                NavigationStack {
+                    SettingsView()
+                }
+                .environmentObject(pactStore)
+                .environmentObject(storeKitManager)
+            }
             .onAppear {
                 setupTabBarAppearance()
                 
@@ -74,14 +82,25 @@ struct ContentView: View {
         }
         .onChange(of: showOnboarding) { _, newValue in
             if !newValue {
-                // Mark onboarding as completed
                 hasCompletedOnboarding = true
-
-                // Navigate to CreatePactView after short delay
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    navigateToCreatePact = true
-                }
             }
+        }
+    }
+
+    private var profileToolbarButton: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                showSettings = true
+            } label: {
+                Image(systemName: "person.crop.circle")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(AppColors.textSecondary)
+                    .frame(width: 36, height: 36)
+                    .background(AppColors.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Open settings")
         }
     }
     

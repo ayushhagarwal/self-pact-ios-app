@@ -29,12 +29,21 @@ enum PactOutcome: String, Codable {
     case notYet = "not_yet"
 }
 
+enum GoalCadence: String, Codable, CaseIterable {
+    case daily
+    case weekdays
+    case custom
+}
+
 // MARK: - Pact Model
 struct Pact: Identifiable, Codable, Equatable {
     let id: String
     var title: String
     var why: String?
     var measurableTarget: String?
+    var nextAction: String?
+    var cadence: GoalCadence?
+    var reminderWeekdays: [Int]?
     var imageUri: String?
     var targetDate: Date
     let createdAt: Date
@@ -50,6 +59,9 @@ struct Pact: Identifiable, Codable, Equatable {
         title: String,
         why: String? = nil,
         measurableTarget: String? = nil,
+        nextAction: String? = nil,
+        cadence: GoalCadence? = nil,
+        reminderWeekdays: [Int]? = nil,
         imageUri: String? = nil,
         targetDate: Date,
         createdAt: Date = Date(),
@@ -64,6 +76,9 @@ struct Pact: Identifiable, Codable, Equatable {
         self.title = title
         self.why = why
         self.measurableTarget = measurableTarget
+        self.nextAction = nextAction
+        self.cadence = cadence
+        self.reminderWeekdays = reminderWeekdays
         self.imageUri = imageUri
         self.targetDate = targetDate
         self.createdAt = createdAt
@@ -111,7 +126,7 @@ struct UserData: Codable, Equatable {
     var iCloudSyncEnabled: Bool
     
     static let `default` = UserData(
-        creditCount: 1,
+        creditCount: 0,
         hasSeenOnboarding: false,
         iCloudSyncEnabled: false
     )

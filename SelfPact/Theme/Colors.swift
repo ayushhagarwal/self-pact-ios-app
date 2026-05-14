@@ -3,46 +3,54 @@ import SwiftUI
 // MARK: - App Colors
 struct AppColors {
     // Backgrounds
-    static let background = Color(hex: "FFFFFF")
-    static let backgroundElevated = Color(hex: "F9FAFB")
+    static let background = Color(hex: "FDFBF7")
+    static let backgroundElevated = Color(hex: "F7F3EC")
     static let surface = Color(hex: "FFFFFF")
-    static let surfaceLight = Color(hex: "F9FAFB")
-    static let surfaceHighlight = Color(hex: "F9FAFB")
-    static let border = Color(hex: "E5E7EB")
-    static let borderLight = Color(hex: "E5E7EB").opacity(0.7)
+    static let surfaceLight = Color(hex: "FCFAF6")
+    static let surfaceHighlight = Color(hex: "F2EDE4")
+    static let border = Color(hex: "E7DED2")
+    static let borderLight = Color(hex: "E7DED2").opacity(0.7)
 
     // Text
-    static let textPrimary = Color(hex: "111827")
-    static let textSecondary = Color(hex: "6B7280")
-    static let textTertiary = Color(hex: "6B7280").opacity(0.75)
-    static let textMuted = Color(hex: "6B7280").opacity(0.55)
+    static let textPrimary = Color(hex: "1F2A2E")
+    static let textSecondary = Color(hex: "66736D")
+    static let textTertiary = Color(hex: "66736D").opacity(0.75)
+    static let textMuted = Color(hex: "66736D").opacity(0.55)
 
-    // Matcha Accents
-    static let accent = Color(hex: "7FB77E")
-    static let accentLight = Color(hex: "A8D5BA")
-    static let accentStrong = Color(hex: "4D8B4D")
-    static let accentDim = Color(hex: "7FB77E").opacity(0.7)
-    static let accentGlow = Color(hex: "A8D5BA").opacity(0.35)
-    static let accentGlowStrong = Color(hex: "A8D5BA").opacity(0.6)
+    // Primary action
+    static let accent = Color(hex: "3F8F68")
+    static let accentLight = Color(hex: "8CC6A7")
+    static let accentStrong = Color(hex: "2F6F4F")
+    static let accentDim = Color(hex: "3F8F68").opacity(0.7)
+    static let accentGlow = Color(hex: "DCEFE5")
+    static let accentGlowStrong = Color(hex: "C7E6D5")
 
-    // Legacy tokens mapped to matcha palette
-    static let gold = accent
-    static let goldLight = accentLight
-    static let goldDim = accentDim
-    static let goldMuted = accentDim
-    static let goldGlow = accentGlow
-    static let goldGlowStrong = accentGlowStrong
+    // Commitment and reflection states
+    static let commitment = Color(hex: "27443B")
+    static let commitmentLight = Color(hex: "5E8174")
+    static let commitmentGlow = Color(hex: "DCE7E0")
+    static let review = Color(hex: "9A6B22")
+    static let reviewGlow = Color(hex: "F5E7C8")
 
-    static let indigo = accent
-    static let indigoLight = accentLight
-    static let indigoDim = accentDim
-    static let indigoGlow = accentGlow
+    // Legacy tokens mapped to the new semantic palette
+    static let gold = review
+    static let goldLight = Color(hex: "D1A85A")
+    static let goldDim = review.opacity(0.7)
+    static let goldMuted = review.opacity(0.55)
+    static let goldGlow = reviewGlow
+    static let goldGlowStrong = Color(hex: "EED69C")
+
+    static let indigo = commitment
+    static let indigoLight = commitmentLight
+    static let indigoDim = commitment.opacity(0.7)
+    static let indigoGlow = commitmentGlow
 
     static let success = accent
     static let successGlow = accentGlow
-    static let warning = accentDim
-    static let error = Color.red
-    static let errorGlow = Color.red.opacity(0.10)
+    static let warning = review
+    static let warningGlow = reviewGlow
+    static let error = Color(hex: "B85C5C")
+    static let errorGlow = Color(hex: "F6DEDC")
 
     // Overlays
     static let overlay = Color.black.opacity(0.08)
@@ -56,8 +64,8 @@ struct AppColors {
     static var backgroundGradient: LinearGradient {
         LinearGradient(
             gradient: Gradient(colors: [
-                Color(hex: "FFFFFF"),
-                Color(hex: "F9FAFB")
+                Color(hex: "FDFBF7"),
+                Color(hex: "F7F3EC")
             ]),
             startPoint: .top,
             endPoint: .bottom

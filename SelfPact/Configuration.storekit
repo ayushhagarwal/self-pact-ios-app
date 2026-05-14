@@ -5,33 +5,33 @@
   ],
   "products" : [
     {
-      "displayPrice" : "9.99",
+      "displayPrice" : "2.99",
       "familyShareable" : false,
       "internalID" : "6738473738",
       "localizations" : [
         {
-          "description" : "Seal one commitment contract.",
-          "displayName" : "1 Seal Credit",
+          "description" : "Unlock Lock Mode for one goal.",
+          "displayName" : "1 Lock Mode Credit",
           "locale" : "en_US"
         }
       ],
       "productID" : "com.selfpact.1seal",
-      "referenceName" : "1 Seal Credit",
+      "referenceName" : "1 Lock Mode Credit",
       "type" : "Consumable"
     },
     {
-      "displayPrice" : "29.99",
+      "displayPrice" : "9.99",
       "familyShareable" : false,
       "internalID" : "6738473739",
       "localizations" : [
         {
-          "description" : "Best value — seal five pacts.",
-          "displayName" : "5 Seal Credits",
+          "description" : "Unlock Lock Mode for five goals.",
+          "displayName" : "5 Lock Mode Credits",
           "locale" : "en_US"
         }
       ],
       "productID" : "com.selfpact.5seals",
-      "referenceName" : "5 Seal Credits",
+      "referenceName" : "5 Lock Mode Credits",
       "type" : "Consumable"
     }
   ],

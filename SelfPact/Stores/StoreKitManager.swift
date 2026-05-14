@@ -80,8 +80,8 @@ class StoreKitManager: ObservableObject {
                     return IAPProductModel(
                         id: productID,
                         product: product,
-                        displayTitle: "1 Commitment",
-                        displayDescription: "Lock one commitment.",
+                        displayTitle: "1 Lock Mode Credit",
+                        displayDescription: "Lock one goal after your free lock.",
                         badge: nil,
                         featured: false
                     )
@@ -90,9 +90,9 @@ class StoreKitManager: ObservableObject {
                     return IAPProductModel(
                         id: productID,
                         product: product,
-                        displayTitle: "5 Commitments",
-                        displayDescription: "Best value — lock five commitments.",
-                        badge: "Save 50%",
+                        displayTitle: "5 Lock Mode Credits",
+                        displayDescription: "Best value for multiple locked goals.",
+                        badge: "Best Value",
                         featured: true
                     )
                     

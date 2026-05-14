@@ -10,8 +10,6 @@ struct CreatePactView: View {
     @State private var targetDate = Date().addingTimeInterval(86400 * 30) // Default 30 days from now
     @State private var showDatePicker = false
     @State private var errors: [String: String] = [:]
-    @State private var navigateToPreview = false
-    @State private var createdPactId: String?
     
     var body: some View {
         NavigationStack {
@@ -50,13 +48,6 @@ struct CreatePactView: View {
                 }
             }
             .animation(.spring(response: 0.34, dampingFraction: 0.88), value: showDatePicker)
-            .navigationDestination(isPresented: $navigateToPreview) {
-                if let pactId = createdPactId {
-                    PreviewPactView(pactId: pactId, onDismissAll: {
-                        dismiss()
-                    })
-                }
-            }
         }
     }
     
@@ -228,7 +219,7 @@ struct CreatePactView: View {
         Button {
             validateAndCreate()
         } label: {
-            Text("Continue")
+            Text("Create Trial Goal")
                 .font(.system(size: 16, weight: .bold))
                 .foregroundColor(.white)
                 .tracking(-0.2)
@@ -317,15 +308,14 @@ struct CreatePactView: View {
         
         if !newErrors.isEmpty { return }
         
-        let pact = pactStore.createPact(
+        _ = pactStore.createPact(
             title: title.trimmingCharacters(in: .whitespacesAndNewlines),
             why: why.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : why.trimmingCharacters(in: .whitespacesAndNewlines),
             measurableTarget: measurableTarget.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : measurableTarget.trimmingCharacters(in: .whitespacesAndNewlines),
             targetDate: targetDate
         )
         
-        createdPactId = pact.id
-        navigateToPreview = true
+        dismiss()
     }
 }
 

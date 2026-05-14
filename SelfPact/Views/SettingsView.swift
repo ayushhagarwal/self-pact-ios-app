@@ -107,11 +107,11 @@ struct SettingsView: View {
                     }
                     
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("Commitments Available")
+                        Text("Lock Mode Credits")
                             .font(.system(size: 15, weight: .medium))
                             .foregroundColor(AppColors.textPrimary)
                         
-                        Text("\(pactStore.userData.creditCount) commitment\(pactStore.userData.creditCount != 1 ? "s" : "")")
+                        Text("\(pactStore.userData.creditCount) credit\(pactStore.userData.creditCount != 1 ? "s" : "")")
                             .font(.system(size: 12))
                             .foregroundColor(AppColors.textTertiary)
                     }
@@ -139,7 +139,7 @@ struct SettingsView: View {
                                 .foregroundColor(AppColors.accent)
                         }
                         
-                        Text("Get More Commitments")
+                        Text("Get Lock Mode Credits")
                             .font(.system(size: 15, weight: .medium))
                             .foregroundColor(AppColors.textPrimary)
                         
