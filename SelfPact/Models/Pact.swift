@@ -20,6 +20,7 @@ enum PactStatus: String, Codable {
     case draft
     case sealed
     case completed
+    case broken
 }
 
 // MARK: - Pact Outcome
@@ -52,6 +53,8 @@ struct Pact: Identifiable, Codable, Equatable {
     var status: PactStatus
     var outcome: PactOutcome?
     var reflection: String?
+    var brokenAt: Date?
+    var breakReason: String?
     var checkIns: [CheckIn]
     
     init(
@@ -70,6 +73,8 @@ struct Pact: Identifiable, Codable, Equatable {
         status: PactStatus = .draft,
         outcome: PactOutcome? = nil,
         reflection: String? = nil,
+        brokenAt: Date? = nil,
+        breakReason: String? = nil,
         checkIns: [CheckIn] = []
     ) {
         self.id = id
@@ -87,6 +92,8 @@ struct Pact: Identifiable, Codable, Equatable {
         self.status = status
         self.outcome = outcome
         self.reflection = reflection
+        self.brokenAt = brokenAt
+        self.breakReason = breakReason
         self.checkIns = checkIns
     }
     
@@ -121,12 +128,19 @@ struct Pact: Identifiable, Codable, Equatable {
 
 // MARK: - User Data
 struct UserData: Codable, Equatable {
-    var creditCount: Int
+    // Retained only to migrate customers from the former consumable-credit model.
+    var legacyCreditCount: Int
     var hasSeenOnboarding: Bool
     var iCloudSyncEnabled: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case legacyCreditCount = "creditCount"
+        case hasSeenOnboarding
+        case iCloudSyncEnabled
+    }
     
     static let `default` = UserData(
-        creditCount: 0,
+        legacyCreditCount: 0,
         hasSeenOnboarding: false,
         iCloudSyncEnabled: false
     )

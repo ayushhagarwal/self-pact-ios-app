@@ -15,12 +15,8 @@ struct PreviewPactView: View {
         pactStore.getPact(id: pactId)
     }
     
-    private var hasCredits: Bool {
-        pactStore.userData.creditCount > 0
-    }
-
-    private var needsLockModeUpgrade: Bool {
-        pactStore.hasUsedFreeLock && !hasCredits
+    private var needsPlusUpgrade: Bool {
+        !pactStore.canSealAnotherPact
     }
     
     var body: some View {
@@ -52,7 +48,9 @@ struct PreviewPactView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(showSealAnimation)
         .sheet(isPresented: $showPurchase) {
-            PurchaseView()
+            PurchaseView {
+                handleSeal()
+            }
         }
     }
     
@@ -145,13 +143,13 @@ struct PreviewPactView: View {
             
             // Seal button
             Button {
-                if needsLockModeUpgrade {
+                if needsPlusUpgrade {
                     showPurchase = true
                 } else {
                     handleSeal()
                 }
             } label: {
-                Text(needsLockModeUpgrade ? "Unlock Lock Mode" : "Lock Goal")
+                Text(needsPlusUpgrade ? "Unlock GoalLock Plus" : "Lock Goal")
                     .font(.system(size: 16, weight: .bold))
                     .tracking(-0.2)
                     .foregroundColor(.white)
@@ -165,12 +163,12 @@ struct PreviewPactView: View {
             .disabled(isSealingInProgress)
             .opacity(isSealingInProgress ? 0.6 : 1.0)
 
-            if needsLockModeUpgrade {
-                Text("Lock Mode starts after your first locked goal.")
+            if needsPlusUpgrade {
+                Text("You have used your three included locked pacts.")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(AppColors.textMuted)
-            } else if !pactStore.hasUsedFreeLock {
-                Text("Your first locked goal is free.")
+            } else if !pactStore.hasLifetimeAccess {
+                Text(includedPactMessage)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(AppColors.accent)
             }
@@ -227,10 +225,16 @@ struct PreviewPactView: View {
     }
     
     // MARK: - Actions
-    // SECURITY: Double-tap protection to prevent negative credits
+    private var includedPactMessage: String {
+        if pactStore.freePactsRemaining == 1 {
+            return "This is your final included locked pact."
+        }
+        return "\(pactStore.freePactsRemaining) included locked pacts remain."
+    }
+
     private func handleSeal() {
         guard !isSealingInProgress else { return }
-        guard !needsLockModeUpgrade else { showPurchase = true; return }
+        guard !needsPlusUpgrade else { showPurchase = true; return }
         
         isSealingInProgress = true
         
@@ -253,5 +257,6 @@ struct PreviewPactView: View {
     NavigationStack {
         PreviewPactView(pactId: "test")
             .environmentObject(PactStore())
+            .environmentObject(StoreKitManager())
     }
 }

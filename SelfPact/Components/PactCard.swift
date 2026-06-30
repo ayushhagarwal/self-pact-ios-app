@@ -11,6 +11,8 @@ struct PactCard: View {
             return pact.isOverdue ? AppColors.review : AppColors.commitment
         } else if pact.status == .completed {
             return AppColors.success
+        } else if pact.status == .broken {
+            return AppColors.error
         }
         return AppColors.border
     }
@@ -20,6 +22,8 @@ struct PactCard: View {
             return pact.isOverdue ? AppColors.reviewGlow : AppColors.commitmentGlow
         } else if pact.status == .completed {
             return AppColors.successGlow
+        } else if pact.status == .broken {
+            return AppColors.errorGlow
         }
         return AppColors.backgroundElevated
     }
@@ -29,6 +33,8 @@ struct PactCard: View {
             return pact.isOverdue ? AppColors.review : AppColors.commitment
         } else if pact.status == .completed {
             return AppColors.success
+        } else if pact.status == .broken {
+            return AppColors.error
         }
         return AppColors.textSecondary
     }
@@ -58,6 +64,8 @@ struct PactCard: View {
                             Group {
                                 if pact.status == .completed {
                                     Image(systemName: "checkmark.circle.fill")
+                                } else if pact.status == .broken {
+                                    Image(systemName: "lock.slash.fill")
                                 } else if pact.status == .sealed {
                                     Image(systemName: "lock.fill")
                                 } else {
@@ -143,6 +151,24 @@ struct PactCard: View {
                                 .cornerRadius(8)
                             
                             Spacer()
+                        }
+                    } else if pact.status == .broken {
+                        HStack {
+                            Text("Pact broken")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(AppColors.error)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(AppColors.errorGlow)
+                                .cornerRadius(8)
+
+                            Spacer()
+
+                            if let brokenAt = pact.brokenAt {
+                                Text(brokenAt.formatted(.dateTime.month(.abbreviated).day()))
+                                    .font(.system(size: 11))
+                                    .foregroundColor(AppColors.textTertiary)
+                            }
                         }
                     }
                 }

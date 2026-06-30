@@ -39,8 +39,8 @@ private enum TodayCheckInOutcome: CaseIterable, Equatable {
 }
 
 private enum TodayField: Hashable {
-    case nextAction
-    case reflection
+    case nextAction(String)
+    case reflection(String)
 }
 
 struct HomeView: View {
@@ -48,14 +48,22 @@ struct HomeView: View {
 
     @State private var showCreatePact = false
     @State private var revealPactId: String?
-    @State private var selectedOutcome: TodayCheckInOutcome?
-    @State private var nextActionDraft = ""
-    @State private var reflectionNote = ""
-    @State private var showSavedState = false
+    @State private var selectedOutcomes: [String: TodayCheckInOutcome] = [:]
+    @State private var nextActionDrafts: [String: String] = [:]
+    @State private var reflectionNotes: [String: String] = [:]
+    @State private var savedPactIDs: Set<String> = []
     @FocusState private var focusedField: TodayField?
 
-    private var activePact: Pact? {
-        pactStore.activeTodayPact
+    private var todayPacts: [Pact] {
+        pactStore.todayPacts
+    }
+
+    private var todayPactIDs: [String] {
+        todayPacts.map(\.id)
+    }
+
+    private var hasActiveGoals: Bool {
+        !pactStore.sealedPacts.isEmpty || !pactStore.draftPacts.isEmpty
     }
 
     var body: some View {
@@ -67,12 +75,22 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     headerSection
 
-                    if !pactStore.revealablePacts.isEmpty {
-                        revealBanner
-                    }
+                    if !todayPacts.isEmpty {
+                        if todayPacts.count > 1 {
+                            Label("\(todayPacts.count) commitments are due today", systemImage: "checklist")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(AppColors.commitment)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(AppColors.commitmentGlow)
+                                .clipShape(Capsule())
+                        }
 
-                    if let activePact {
-                        todaySection(for: activePact)
+                        LazyVStack(spacing: 16) {
+                            ForEach(todayPacts) { pact in
+                                todaySection(for: pact)
+                            }
+                        }
                     } else {
                         emptyTodayState
                     }
@@ -88,11 +106,10 @@ struct HomeView: View {
             RevealView(pactId: id)
         }
         .onAppear {
-            syncNextActionDraft()
+            syncTodayDrafts()
         }
-        .onChange(of: activePact?.id) { _, _ in
-            syncNextActionDraft()
-            resetCheckInComposer()
+        .onChange(of: todayPactIDs) { _, _ in
+            syncTodayDrafts()
         }
     }
 
@@ -131,49 +148,6 @@ struct HomeView: View {
         }
         .padding(.top, 12)
         .padding(.bottom, 2)
-    }
-
-    // MARK: - Reveal
-
-    private var revealBanner: some View {
-        Button {
-            if let firstPact = pactStore.revealablePacts.first {
-                revealPactId = firstPact.id
-            }
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(AppColors.accent)
-                    .frame(width: 36, height: 36)
-                    .background(AppColors.accentGlowStrong)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(pactStore.revealablePacts.count == 1 ? "1 goal is ready to review" : "\(pactStore.revealablePacts.count) goals are ready to review")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(AppColors.textPrimary)
-
-                    Text("Close the loop and record what happened.")
-                        .font(.system(size: 12))
-                        .foregroundColor(AppColors.textSecondary)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(AppColors.accent)
-            }
-            .padding(14)
-            .background(AppColors.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(AppColors.accentLight.opacity(0.55), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Today
@@ -249,7 +223,7 @@ struct HomeView: View {
                 .font(.system(size: 15, weight: .bold))
                 .foregroundColor(AppColors.textPrimary)
 
-            TextField("e.g., Walk 20 minutes before lunch", text: $nextActionDraft, axis: .vertical)
+            TextField("e.g., Walk 20 minutes before lunch", text: nextActionBinding(for: pact), axis: .vertical)
                 .font(.system(size: 15, weight: .medium))
                 .foregroundColor(AppColors.textPrimary)
                 .lineLimit(1...3)
@@ -258,16 +232,16 @@ struct HomeView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(focusedField == .nextAction ? AppColors.accentLight : AppColors.border, lineWidth: 1)
+                        .stroke(focusedField == .nextAction(pact.id) ? AppColors.accentLight : AppColors.border, lineWidth: 1)
                 )
-                .focused($focusedField, equals: .nextAction)
+                .focused($focusedField, equals: .nextAction(pact.id))
 
             if nextActionHasChanges(for: pact) {
                 HStack {
                     Spacer()
 
                     Button {
-                        pactStore.updateNextAction(pactId: pact.id, nextAction: nextActionDraft)
+                        pactStore.updateNextAction(pactId: pact.id, nextAction: nextActionDraft(for: pact))
                         rescheduleReminders(for: pact.id)
                         focusedField = nil
                     } label: {
@@ -303,7 +277,7 @@ struct HomeView: View {
 
                 Spacer()
 
-                if showSavedState {
+                if savedPactIDs.contains(pact.id) {
                     Label("Saved", systemImage: "checkmark.circle.fill")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(AppColors.accent)
@@ -316,12 +290,12 @@ struct HomeView: View {
                 }
             }
 
-            if let selectedOutcome {
+            if let selectedOutcome = selectedOutcomes[pact.id] {
                 reflectionComposer(for: pact, outcome: selectedOutcome)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: selectedOutcome)
+        .animation(.easeInOut(duration: 0.2), value: selectedOutcomes[pact.id])
     }
 
     private func checkInButton(_ outcome: TodayCheckInOutcome, pact: Pact) -> some View {
@@ -337,14 +311,14 @@ struct HomeView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
             }
-            .foregroundColor(selectedOutcome == outcome ? .white : outcome.tint)
+            .foregroundColor(selectedOutcomes[pact.id] == outcome ? .white : outcome.tint)
             .frame(maxWidth: .infinity)
             .frame(height: 68)
-            .background(selectedOutcome == outcome ? outcome.tint : AppColors.backgroundElevated)
+            .background(selectedOutcomes[pact.id] == outcome ? outcome.tint : AppColors.backgroundElevated)
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
-                    .stroke(selectedOutcome == outcome ? outcome.tint.opacity(0.25) : AppColors.border, lineWidth: 1)
+                    .stroke(selectedOutcomes[pact.id] == outcome ? outcome.tint.opacity(0.25) : AppColors.border, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
@@ -356,7 +330,7 @@ struct HomeView: View {
                 .font(.system(size: 14, weight: .bold))
                 .foregroundColor(AppColors.textPrimary)
 
-            TextField("Optional note", text: $reflectionNote, axis: .vertical)
+            TextField("Optional note", text: reflectionBinding(for: pact), axis: .vertical)
                 .font(.system(size: 15))
                 .foregroundColor(AppColors.textPrimary)
                 .lineLimit(2...4)
@@ -367,12 +341,12 @@ struct HomeView: View {
                     RoundedRectangle(cornerRadius: 14)
                         .stroke(AppColors.border, lineWidth: 1)
                 )
-                .focused($focusedField, equals: .reflection)
+                .focused($focusedField, equals: .reflection(pact.id))
 
             Button {
                 saveTodayCheckIn(for: pact, outcome: outcome)
             } label: {
-                Text(reflectionNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Skip Note" : "Save Note")
+                Text(reflectionNote(for: pact).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Skip Note" : "Save Note")
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -455,7 +429,7 @@ struct HomeView: View {
 
                 Spacer()
 
-                Text("\(summary.loggedDays)/7 days")
+                Text("\(summary.loggedDays)/\(summary.scheduledDays) due")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(AppColors.accent)
                     .padding(.horizontal, 9)
@@ -484,7 +458,7 @@ struct HomeView: View {
 
     private var emptyTodayState: some View {
         VStack(spacing: 18) {
-            Image(systemName: pactStore.draftPacts.isEmpty ? "target" : "lock.open")
+            Image(systemName: hasActiveGoals ? "checkmark.circle" : "target")
                 .font(.system(size: 28, weight: .semibold))
                 .foregroundColor(AppColors.accent)
                 .frame(width: 70, height: 70)
@@ -492,31 +466,33 @@ struct HomeView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 20))
 
             VStack(spacing: 8) {
-                Text(pactStore.draftPacts.isEmpty ? "Choose one goal for today" : "Pick up your trial goal")
+                Text(hasActiveGoals ? "Nothing is due today" : "Choose one goal for today")
                     .font(.system(size: 22, weight: .bold))
                     .foregroundColor(AppColors.textPrimary)
                     .tracking(-0.3)
                     .multilineTextAlignment(.center)
 
-                Text(pactStore.draftPacts.isEmpty ? "Start with one clear commitment and a small action you can do today." : "You can track for free now and lock it when you want the extra commitment.")
+                Text(hasActiveGoals ? "Your commitments are still active. The next one will return on its scheduled check-in day." : "Start with one clear commitment and a small action you can do today.")
                     .font(.system(size: 15))
                     .foregroundColor(AppColors.textSecondary)
                     .multilineTextAlignment(.center)
                     .lineSpacing(4)
             }
 
-            Button {
-                showCreatePact = true
-            } label: {
-                Text(pactStore.draftPacts.isEmpty ? "Create a Goal" : "Create Another Goal")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 13)
-                    .background(AppColors.accentStrong)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
+            if !hasActiveGoals {
+                Button {
+                    showCreatePact = true
+                } label: {
+                    Text("Create a Goal")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 13)
+                        .background(AppColors.accentStrong)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity)
         .padding(28)
@@ -531,23 +507,23 @@ struct HomeView: View {
     // MARK: - Actions
 
     private func logTodayCheckIn(for pact: Pact, outcome: TodayCheckInOutcome) {
-        selectedOutcome = outcome
-        reflectionNote = ""
-        focusedField = .reflection
+        selectedOutcomes[pact.id] = outcome
+        reflectionNotes[pact.id] = ""
+        focusedField = .reflection(pact.id)
 
         pactStore.addTodayCheckIn(
             pactId: pact.id,
             progress: outcome.progress,
             note: nil,
-            nextAction: nextActionDraft
+            nextAction: nextActionDraft(for: pact)
         )
 
         rescheduleReminders(for: pact.id)
-        syncNextActionDraft()
-        showSavedState = true
+        syncNextActionDraft(for: pact)
+        savedPactIDs.insert(pact.id)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            showSavedState = false
+            savedPactIDs.remove(pact.id)
         }
     }
 
@@ -555,23 +531,29 @@ struct HomeView: View {
         pactStore.addTodayCheckIn(
             pactId: pact.id,
             progress: outcome.progress,
-            note: reflectionNote,
-            nextAction: nextActionDraft
+            note: reflectionNote(for: pact),
+            nextAction: nextActionDraft(for: pact)
         )
 
         rescheduleReminders(for: pact.id)
-        resetCheckInComposer()
-        syncNextActionDraft()
+        resetCheckInComposer(for: pact.id)
+        syncNextActionDraft(for: pact)
         focusedField = nil
-        showSavedState = true
+        savedPactIDs.insert(pact.id)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            showSavedState = false
+            savedPactIDs.remove(pact.id)
         }
     }
 
-    private func syncNextActionDraft() {
-        nextActionDraft = activePact?.nextAction ?? ""
+    private func syncTodayDrafts() {
+        for pact in todayPacts where nextActionDrafts[pact.id] == nil {
+            syncNextActionDraft(for: pact)
+        }
+    }
+
+    private func syncNextActionDraft(for pact: Pact) {
+        nextActionDrafts[pact.id] = pact.nextAction ?? ""
     }
 
     private func rescheduleReminders(for pactId: String) {
@@ -582,13 +564,35 @@ struct HomeView: View {
         }
     }
 
-    private func resetCheckInComposer() {
-        selectedOutcome = nil
-        reflectionNote = ""
+    private func resetCheckInComposer(for pactId: String) {
+        selectedOutcomes.removeValue(forKey: pactId)
+        reflectionNotes[pactId] = ""
     }
 
     private func nextActionHasChanges(for pact: Pact) -> Bool {
-        nextActionDraft.trimmingCharacters(in: .whitespacesAndNewlines) != (pact.nextAction ?? "")
+        nextActionDraft(for: pact).trimmingCharacters(in: .whitespacesAndNewlines) != (pact.nextAction ?? "")
+    }
+
+    private func nextActionDraft(for pact: Pact) -> String {
+        nextActionDrafts[pact.id] ?? pact.nextAction ?? ""
+    }
+
+    private func reflectionNote(for pact: Pact) -> String {
+        reflectionNotes[pact.id] ?? ""
+    }
+
+    private func nextActionBinding(for pact: Pact) -> Binding<String> {
+        Binding(
+            get: { nextActionDraft(for: pact) },
+            set: { nextActionDrafts[pact.id] = $0 }
+        )
+    }
+
+    private func reflectionBinding(for pact: Pact) -> Binding<String> {
+        Binding(
+            get: { reflectionNote(for: pact) },
+            set: { reflectionNotes[pact.id] = $0 }
+        )
     }
 
     private func hasCheckedInToday(_ pact: Pact) -> Bool {
@@ -613,11 +617,21 @@ struct HomeView: View {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
         let startDate = calendar.date(byAdding: .day, value: -6, to: today) ?? today
-        let checkIns = pact.checkIns.filter { $0.date >= startDate }
+        let pactStartDate = calendar.startOfDay(for: pact.sealTimestamp ?? pact.createdAt)
+        let summaryStartDate = max(startDate, pactStartDate)
+        let checkIns = pact.checkIns.filter {
+            $0.date >= summaryStartDate && pactStore.isScheduledForCheckIn(pact, on: $0.date)
+        }
         let didIt = checkIns.filter { $0.progress >= 100 }.count
         let partial = checkIns.filter { $0.progress > 0 && $0.progress < 100 }.count
         let missed = checkIns.filter { $0.progress == 0 }.count
         let loggedDays = Set(checkIns.map { calendar.startOfDay(for: $0.date) }).count
+        let scheduledDays = (0..<7).reduce(into: 0) { count, dayOffset in
+            guard let date = calendar.date(byAdding: .day, value: -dayOffset, to: today) else { return }
+            if date >= summaryStartDate && pactStore.isScheduledForCheckIn(pact, on: date) {
+                count += 1
+            }
+        }
 
         let prompt: String
         if loggedDays == 0 {
@@ -633,6 +647,7 @@ struct HomeView: View {
             partial: partial,
             missed: missed,
             loggedDays: loggedDays,
+            scheduledDays: max(scheduledDays, 1),
             prompt: prompt
         )
     }
@@ -643,6 +658,7 @@ private struct WeeklySummary {
     let partial: Int
     let missed: Int
     let loggedDays: Int
+    let scheduledDays: Int
     let prompt: String
 }
 

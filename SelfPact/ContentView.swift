@@ -65,10 +65,8 @@ struct ContentView: View {
                 }
             }
             .task {
-                // Configure StoreKit with PactStore
                 storeKitManager.configure(with: pactStore)
-                // Check for pending transactions on app launch
-                await storeKitManager.checkPendingTransactions()
+                await storeKitManager.prepareStore()
             }
             
             // Onboarding overlay

@@ -21,8 +21,8 @@ struct SettingsView: View {
                     // Storage section
                     storageSection
                     
-                    // Credits section
-                    creditsSection
+                    // Access section
+                    accessSection
                     
                     // Legal section
                     legalSection
@@ -83,9 +83,9 @@ struct SettingsView: View {
         .padding(.bottom, 20)
     }
     
-    // MARK: - Credits Section
+    // MARK: - Access Section
     
-    private var creditsSection: some View {
+    private var accessSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("COMMITMENTS")
                 .font(.system(size: 11, weight: .bold))
@@ -94,24 +94,23 @@ struct SettingsView: View {
                 .padding(.leading, 4)
             
             VStack(spacing: 0) {
-                // Commitments available
                 HStack(spacing: 12) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 8)
                             .fill(AppColors.accentGlow)
                             .frame(width: 32, height: 32)
                         
-                        Image(systemName: "shield.fill")
+                        Image(systemName: pactStore.hasLifetimeAccess ? "checkmark.seal.fill" : "sparkles")
                             .font(.system(size: 14))
                             .foregroundColor(AppColors.accent)
                     }
                     
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("Lock Mode Credits")
+                        Text("GoalLock Plus")
                             .font(.system(size: 15, weight: .medium))
                             .foregroundColor(AppColors.textPrimary)
                         
-                        Text("\(pactStore.userData.creditCount) credit\(pactStore.userData.creditCount != 1 ? "s" : "")")
+                        Text(accessStatus)
                             .font(.system(size: 12))
                             .foregroundColor(AppColors.textTertiary)
                     }
@@ -124,34 +123,49 @@ struct SettingsView: View {
                     .background(AppColors.border)
                     .padding(.horizontal, 14)
                 
-                // Buy more
-                Button {
-                    showPurchase = true
-                } label: {
+                if pactStore.hasLifetimeAccess {
                     HStack(spacing: 12) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(AppColors.accentGlow)
-                                .frame(width: 32, height: 32)
-                            
-                            Image(systemName: "shield.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(AppColors.accent)
-                        }
-                        
-                        Text("Get Lock Mode Credits")
+                        Image(systemName: "infinity")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundColor(AppColors.accent)
+                            .frame(width: 32, height: 32)
+
+                        Text("Unlimited locked pacts")
                             .font(.system(size: 15, weight: .medium))
                             .foregroundColor(AppColors.textPrimary)
-                        
+
                         Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 14))
-                            .foregroundColor(AppColors.textMuted)
                     }
                     .padding(14)
+                } else {
+                    Button {
+                        showPurchase = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(AppColors.accentGlow)
+                                    .frame(width: 32, height: 32)
+
+                                Image(systemName: "infinity")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(AppColors.accent)
+                            }
+
+                            Text("Unlock unlimited pacts")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(AppColors.textPrimary)
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14))
+                                .foregroundColor(AppColors.textMuted)
+                        }
+                        .padding(14)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
             .background(AppColors.backgroundElevated)
             .cornerRadius(16)
@@ -226,6 +240,13 @@ struct SettingsView: View {
     }
     
     // MARK: - Helper Views
+
+    private var accessStatus: String {
+        if pactStore.hasLifetimeAccess {
+            return "Lifetime access active"
+        }
+        return "\(pactStore.freePactsRemaining) of \(PactStore.freePactLimit) included pacts remaining"
+    }
     
     private func settingsRow(icon: String, title: String) -> some View {
         HStack(spacing: 12) {
@@ -256,4 +277,5 @@ struct SettingsView: View {
 #Preview {
     SettingsView()
         .environmentObject(PactStore())
+        .environmentObject(StoreKitManager())
 }

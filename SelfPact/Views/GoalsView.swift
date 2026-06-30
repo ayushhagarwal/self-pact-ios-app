@@ -17,13 +17,13 @@ struct GoalsView: View {
             .sorted { $0.createdAt > $1.createdAt }
     }
 
-    private var completedGoals: [Pact] {
-        pactStore.completedPacts
-            .sorted { ($0.sealTimestamp ?? $0.createdAt) > ($1.sealTimestamp ?? $1.createdAt) }
+    private var archivedGoals: [Pact] {
+        pactStore.archivedPacts
+            .sorted { archiveDate(for: $0) > archiveDate(for: $1) }
     }
 
     private var hasAnyGoals: Bool {
-        !lockedGoals.isEmpty || !trialGoals.isEmpty || !completedGoals.isEmpty
+        !lockedGoals.isEmpty || !trialGoals.isEmpty || !archivedGoals.isEmpty
     }
 
     var body: some View {
@@ -53,12 +53,12 @@ struct GoalsView: View {
                             )
                         }
 
-                        if !completedGoals.isEmpty {
+                        if !archivedGoals.isEmpty {
                             tuckedGoalsSection(
-                                title: "Completed archive",
-                                count: completedGoals.count,
+                                title: "Permanent archive",
+                                count: archivedGoals.count,
                                 isExpanded: $showCompletedArchive,
-                                pacts: completedGoals
+                                pacts: archivedGoals
                             )
                         }
                     } else {
@@ -168,6 +168,10 @@ struct GoalsView: View {
             PactCard(pact: pact)
         }
         .buttonStyle(.plain)
+    }
+
+    private func archiveDate(for pact: Pact) -> Date {
+        pact.brokenAt ?? pact.sealTimestamp ?? pact.createdAt
     }
 
     private var emptyGoalsState: some View {

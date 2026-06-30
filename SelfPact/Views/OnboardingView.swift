@@ -37,13 +37,17 @@ struct OnboardingView: View {
     @State private var nextAction = ""
     @State private var cadence: GoalCadence = .daily
     @State private var customWeekdays: Set<Int> = [2, 3, 4, 5, 6]
-    @State private var reviewDate = Date().addingTimeInterval(86400 * 30)
     @State private var createdPact: Pact?
     @State private var isRequestingReminders = false
+    @State private var creationError: String?
     @FocusState private var focusedField: OnboardingField?
 
     private var canCreateGoal: Bool {
         !goalTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var starterTargetDate: Date {
+        Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date().addingTimeInterval(86400 * 7)
     }
 
     var body: some View {
@@ -111,7 +115,7 @@ struct OnboardingView: View {
                 Button {
                     advanceIntro()
                 } label: {
-                    Text(introIndex == onboardingIntroSlides.count - 1 ? "Build My First Goal" : "Next")
+                    Text(introIndex == onboardingIntroSlides.count - 1 ? "Make My First Pact" : "Next")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -145,7 +149,7 @@ struct OnboardingView: View {
                 goalQuestion
                 templatePicker
                 cadencePicker
-                reviewDatePicker
+                starterPactDurationCard
                 createButton
             }
             .padding(.horizontal, 22)
@@ -161,7 +165,7 @@ struct OnboardingView: View {
                 .foregroundColor(AppColors.textPrimary)
                 .tracking(-0.7)
 
-            Text("Create one trial goal. You can track it for free and lock it later if you want the extra commitment.")
+            Text("Choose one meaningful change. Your first seven-day pact is free and locks as soon as you confirm it.")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(AppColors.textSecondary)
                 .lineSpacing(5)
@@ -277,31 +281,58 @@ struct OnboardingView: View {
         .buttonStyle(.plain)
     }
 
-    private var reviewDatePicker: some View {
+    private var starterPactDurationCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Choose a review date")
+            Text("Your first pact")
                 .font(.system(size: 15, weight: .bold))
                 .foregroundColor(AppColors.textPrimary)
 
-            DatePicker(
-                "Review date",
-                selection: $reviewDate,
-                in: Date().addingTimeInterval(86400)...,
-                displayedComponents: .date
-            )
-            .datePickerStyle(.compact)
-            .tint(AppColors.accentStrong)
+            HStack(spacing: 12) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(AppColors.commitment)
+                    .frame(width: 38, height: 38)
+                    .background(AppColors.commitmentGlow)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Locked for 7 days")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(AppColors.textPrimary)
+
+                    Text("Review on \(starterTargetDate.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))")
+                        .font(.system(size: 13))
+                        .foregroundColor(AppColors.textSecondary)
+                }
+
+                Spacer()
+            }
             .padding(14)
             .background(AppColors.backgroundElevated)
             .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(AppColors.border, lineWidth: 1)
+            )
+
+            Text("It cannot be edited or deleted after locking. If you must stop, breaking it creates a permanent record with your reason.")
+                .font(.system(size: 12))
+                .foregroundColor(AppColors.textSecondary)
+                .lineSpacing(3)
+
+            if let creationError {
+                Text(creationError)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(AppColors.error)
+            }
         }
     }
 
     private var createButton: some View {
         Button {
-            createTrialGoal()
+            createAndLockStarterPact()
         } label: {
-            Text("Create Trial Goal")
+            Text("Lock My 7-Day Pact")
                 .font(.system(size: 16, weight: .bold))
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
@@ -326,13 +357,13 @@ struct OnboardingView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 24))
 
             VStack(spacing: 10) {
-                Text("Your trial goal is ready")
+                Text("Your seven-day pact is locked")
                     .font(.system(size: 30, weight: .bold))
                     .foregroundColor(AppColors.textPrimary)
                     .tracking(-0.5)
                     .multilineTextAlignment(.center)
 
-                Text("A gentle reminder can bring you back for the check-in you just set up.")
+                Text("You cannot rewrite or delete it now. Show up on each check-in day, then face the result at the end.")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(AppColors.textSecondary)
                     .multilineTextAlignment(.center)
@@ -396,8 +427,9 @@ struct OnboardingView: View {
         }
     }
 
-    private func createTrialGoal() {
+    private func createAndLockStarterPact() {
         focusedField = nil
+        creationError = nil
 
         let pact = pactStore.createPact(
             title: goalTitle.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -406,10 +438,16 @@ struct OnboardingView: View {
             nextAction: nextAction,
             cadence: cadence,
             reminderWeekdays: cadence == .custom ? Array(customWeekdays) : nil,
-            targetDate: reviewDate
+            targetDate: starterTargetDate
         )
 
-        createdPact = pact
+        guard pactStore.sealPact(id: pact.id), let lockedPact = pactStore.getPact(id: pact.id) else {
+            pactStore.deletePact(id: pact.id)
+            creationError = "Your starter pact could not be locked. Please try again."
+            return
+        }
+
+        createdPact = lockedPact
     }
 
     private func advanceIntro() {
@@ -665,8 +703,8 @@ private let onboardingIntroSlides: [OnboardingIntroSlide] = [
     ),
     OnboardingIntroSlide(
         id: "lock",
-        title: "Lock it later",
-        caption: "Your first lock is free. More locks use credits.",
+        title: "Lock it now",
+        caption: "Start with a free seven-day pact you cannot rewrite.",
         accent: AppColors.commitment,
         glow: AppColors.commitmentGlow,
         visual: .lock

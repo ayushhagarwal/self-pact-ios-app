@@ -29,6 +29,7 @@ enum ReminderManager {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: checkInReminderIdentifiers(for: pact.id) + legacyReminderIdentifiers(for: pact.id))
 
+        guard pact.status == .sealed || pact.status == .draft else { return }
         guard let weekdays = pact.reminderWeekdays, !weekdays.isEmpty else { return }
 
         for weekday in weekdays {
@@ -58,7 +59,7 @@ enum ReminderManager {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [reviewReminderIdentifier(for: pact.id)])
 
-        guard pact.status != .completed else { return }
+        guard pact.status == .sealed else { return }
         guard pact.targetDate > Date() else { return }
 
         var dateComponents = Calendar.current.dateComponents([.year, .month, .day], from: pact.targetDate)
