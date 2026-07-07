@@ -29,7 +29,6 @@ struct OnboardingView: View {
     @EnvironmentObject var pactStore: PactStore
 
     @State private var showBuilder = false
-    @State private var introIndex = 0
     @State private var introAnimationActive = false
     @State private var selectedTemplate = onboardingTemplates[0]
     @State private var goalTitle = ""
@@ -74,30 +73,24 @@ struct OnboardingView: View {
         }
     }
 
-    private var currentIntroSlide: OnboardingIntroSlide {
-        onboardingIntroSlides[introIndex]
-    }
-
     private var introStep: some View {
         VStack(spacing: 24) {
             Spacer(minLength: 24)
 
             VStack(spacing: 18) {
                 OnboardingIntroCard(
-                    slide: currentIntroSlide,
+                    slide: onboardingIntroSlide,
                     isActive: introAnimationActive
                 )
-                .id(currentIntroSlide.id)
-                .transition(.opacity.combined(with: .scale(scale: 0.96)))
 
                 VStack(spacing: 8) {
-                    Text(currentIntroSlide.title)
+                    Text(onboardingIntroSlide.title)
                         .font(.system(size: 32, weight: .bold))
                         .foregroundColor(AppColors.textPrimary)
                         .tracking(-0.7)
                         .multilineTextAlignment(.center)
 
-                    Text(currentIntroSlide.caption)
+                    Text(onboardingIntroSlide.caption)
                         .font(.system(size: 15, weight: .medium))
                         .foregroundColor(AppColors.textSecondary)
                         .multilineTextAlignment(.center)
@@ -109,37 +102,21 @@ struct OnboardingView: View {
 
             Spacer(minLength: 16)
 
-            VStack(spacing: 18) {
-                introProgress
-
-                Button {
-                    advanceIntro()
-                } label: {
-                    Text(introIndex == onboardingIntroSlides.count - 1 ? "Make My First Pact" : "Next")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 17)
-                        .background(AppColors.accentStrong)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                }
-                .buttonStyle(.plain)
+            Button {
+                showBuilder = true
+            } label: {
+                Text("Build My First Pact")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 17)
+                    .background(AppColors.accentStrong)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
             }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 34)
-    }
-
-    private var introProgress: some View {
-        HStack(spacing: 7) {
-            ForEach(onboardingIntroSlides.indices, id: \.self) { index in
-                Capsule()
-                    .fill(index == introIndex ? AppColors.accentStrong : AppColors.border)
-                    .frame(width: index == introIndex ? 24 : 7, height: 7)
-                    .animation(.spring(response: 0.28, dampingFraction: 0.82), value: introIndex)
-            }
-        }
-        .accessibilityHidden(true)
     }
 
     private var builderStep: some View {
@@ -165,7 +142,7 @@ struct OnboardingView: View {
                 .foregroundColor(AppColors.textPrimary)
                 .tracking(-0.7)
 
-            Text("Choose one meaningful change. Your first seven-day pact is free and locks as soon as you confirm it.")
+            Text("Choose one meaningful change and the smallest action you can take today. Your first 3 locked pacts are included.")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(AppColors.textSecondary)
                 .lineSpacing(5)
@@ -315,7 +292,7 @@ struct OnboardingView: View {
                     .stroke(AppColors.border, lineWidth: 1)
             )
 
-            Text("It cannot be edited or deleted after locking. If you must stop, breaking it creates a permanent record with your reason.")
+            Text("Keep this promise unchanged for seven days, then reflect honestly on what happened. Progress matters more than perfection.")
                 .font(.system(size: 12))
                 .foregroundColor(AppColors.textSecondary)
                 .lineSpacing(3)
@@ -363,7 +340,7 @@ struct OnboardingView: View {
                     .tracking(-0.5)
                     .multilineTextAlignment(.center)
 
-                Text("You cannot rewrite or delete it now. Show up on each check-in day, then face the result at the end.")
+                Text("Your promise stays unchanged for seven days. Check in honestly, then reflect on what helped and what you learned.")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(AppColors.textSecondary)
                     .multilineTextAlignment(.center)
@@ -450,20 +427,6 @@ struct OnboardingView: View {
         createdPact = lockedPact
     }
 
-    private func advanceIntro() {
-        if introIndex < onboardingIntroSlides.count - 1 {
-            introAnimationActive = false
-            withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
-                introIndex += 1
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                introAnimationActive = true
-            }
-        } else {
-            showBuilder = true
-        }
-    }
 }
 
 private struct OnboardingIntroCard: View {
@@ -542,8 +505,8 @@ private struct OnboardingIntroCard: View {
         VStack(spacing: 16) {
             HStack(spacing: 10) {
                 OnboardingCheckInPill(title: "Did it", icon: "checkmark", tint: AppColors.success, isSelected: isActive)
-                OnboardingCheckInPill(title: "Partial", icon: "circle.lefthalf.filled", tint: AppColors.warning, isSelected: false)
-                OnboardingCheckInPill(title: "Missed", icon: "xmark", tint: AppColors.error, isSelected: false)
+                OnboardingCheckInPill(title: "Progress", icon: "circle.lefthalf.filled", tint: AppColors.warning, isSelected: false)
+                OnboardingCheckInPill(title: "Not today", icon: "xmark", tint: AppColors.error, isSelected: false)
             }
 
             HStack(spacing: 10) {
@@ -578,7 +541,7 @@ private struct OnboardingIntroCard: View {
                     .font(.system(size: 36, weight: .bold))
                     .foregroundColor(AppColors.commitment)
 
-                Text("First lock free")
+                Text("3 locks included")
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(AppColors.commitment)
                     .padding(.horizontal, 14)
@@ -684,32 +647,14 @@ private enum OnboardingField: Hashable {
     case action
 }
 
-private let onboardingIntroSlides: [OnboardingIntroSlide] = [
-    OnboardingIntroSlide(
-        id: "create",
-        title: "Create a goal",
-        caption: "Pick one change and the next action.",
-        accent: AppColors.accent,
-        glow: AppColors.accentGlow,
-        visual: .create
-    ),
-    OnboardingIntroSlide(
-        id: "track",
-        title: "Track it daily",
-        caption: "Check in without journaling.",
-        accent: AppColors.accent,
-        glow: AppColors.accentGlow,
-        visual: .track
-    ),
-    OnboardingIntroSlide(
-        id: "lock",
-        title: "Lock it now",
-        caption: "Start with a free seven-day pact you cannot rewrite.",
-        accent: AppColors.commitment,
-        glow: AppColors.commitmentGlow,
-        visual: .lock
-    )
-]
+private let onboardingIntroSlide = OnboardingIntroSlide(
+    id: "welcome",
+    title: "One promise. One small action.",
+    caption: "Choose something meaningful, check in honestly, and learn what helps you keep going.",
+    accent: AppColors.accent,
+    glow: AppColors.accentGlow,
+    visual: .create
+)
 
 private let onboardingTemplates: [OnboardingGoalTemplate] = [
     OnboardingGoalTemplate(

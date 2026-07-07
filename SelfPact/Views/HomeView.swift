@@ -8,8 +8,8 @@ private enum TodayCheckInOutcome: CaseIterable, Equatable {
     var title: String {
         switch self {
         case .didIt: return "Did it"
-        case .partial: return "Partial"
-        case .missed: return "Missed"
+        case .partial: return "Made progress"
+        case .missed: return "Not today"
         }
     }
 
@@ -40,7 +40,6 @@ private enum TodayCheckInOutcome: CaseIterable, Equatable {
 
 private enum TodayField: Hashable {
     case nextAction(String)
-    case reflection(String)
 }
 
 struct HomeView: View {
@@ -51,7 +50,7 @@ struct HomeView: View {
     @State private var selectedOutcomes: [String: TodayCheckInOutcome] = [:]
     @State private var nextActionDrafts: [String: String] = [:]
     @State private var reflectionNotes: [String: String] = [:]
-    @State private var savedPactIDs: Set<String> = []
+    @State private var noteComposerPactIDs: Set<String> = []
     @FocusState private var focusedField: TodayField?
 
     private var todayPacts: [Pact] {
@@ -163,8 +162,7 @@ struct HomeView: View {
                 checkInCard(for: pact)
             }
 
-            statsRow(for: pact)
-            weeklySummaryCard(for: pact)
+            weeklyProgressLink(for: pact)
         }
         .padding(18)
         .background(AppColors.surface)
@@ -270,18 +268,11 @@ struct HomeView: View {
                         .font(.system(size: 17, weight: .bold))
                         .foregroundColor(AppColors.textPrimary)
 
-                    Text(hasCheckedInToday(pact) ? "You can update it if the day changed." : "One tap is enough. Details can come after.")
+                    Text(hasCheckedInToday(pact) ? "Tap another response if your day changed." : "Choose once and you’re done.")
                         .font(.system(size: 13))
                         .foregroundColor(AppColors.textSecondary)
                 }
 
-                Spacer()
-
-                if savedPactIDs.contains(pact.id) {
-                    Label("Saved", systemImage: "checkmark.circle.fill")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(AppColors.accent)
-                }
             }
 
             HStack(spacing: 8) {
@@ -291,11 +282,44 @@ struct HomeView: View {
             }
 
             if let selectedOutcome = selectedOutcomes[pact.id] {
-                reflectionComposer(for: pact, outcome: selectedOutcome)
+                loggedConfirmation(for: pact, outcome: selectedOutcome)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .animation(.easeInOut(duration: 0.2), value: selectedOutcomes[pact.id])
+        .animation(.easeInOut(duration: 0.2), value: noteComposerPactIDs.contains(pact.id))
+    }
+
+    private func loggedConfirmation(for pact: Pact, outcome: TodayCheckInOutcome) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(AppColors.accent)
+
+                Text("Check-in logged")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(AppColors.textPrimary)
+
+                Spacer()
+
+                if !noteComposerPactIDs.contains(pact.id) {
+                    Button("Add note") {
+                        noteComposerPactIDs.insert(pact.id)
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(AppColors.accent)
+                    .buttonStyle(.plain)
+                }
+            }
+
+            if noteComposerPactIDs.contains(pact.id) {
+                reflectionComposer(for: pact, outcome: outcome)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(12)
+        .background(AppColors.accentGlow.opacity(0.7))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
     private func checkInButton(_ outcome: TodayCheckInOutcome, pact: Pact) -> some View {
@@ -341,12 +365,10 @@ struct HomeView: View {
                     RoundedRectangle(cornerRadius: 14)
                         .stroke(AppColors.border, lineWidth: 1)
                 )
-                .focused($focusedField, equals: .reflection(pact.id))
-
             Button {
                 saveTodayCheckIn(for: pact, outcome: outcome)
             } label: {
-                Text(reflectionNote(for: pact).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Skip Note" : "Save Note")
+                Text("Save note")
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -355,6 +377,8 @@ struct HomeView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 14))
             }
             .buttonStyle(.plain)
+            .disabled(reflectionNote(for: pact).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .opacity(reflectionNote(for: pact).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.55 : 1)
         }
         .padding(14)
         .background(AppColors.backgroundElevated)
@@ -396,62 +420,31 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
 
-    private func statsRow(for pact: Pact) -> some View {
-        HStack(spacing: 8) {
-            TodayStatTile(
-                icon: "calendar",
-                label: "Days left",
-                value: pact.status == .sealed && pact.isReady ? "Review" : "\(pact.daysRemaining)d"
-            )
+    private func weeklyProgressLink(for pact: Pact) -> some View {
+        let progress = weeklyProgress(for: pact)
 
-            TodayStatTile(
-                icon: "flame",
-                label: "Streak",
-                value: "\(pactStore.currentStreak(for: pact))d"
-            )
+        return NavigationLink(destination: PactDetailView(pactId: pact.id)) {
+            HStack(spacing: 8) {
+                Image(systemName: "chart.line.uptrend.xyaxis")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(AppColors.accent)
 
-            TodayStatTile(
-                icon: "clock",
-                label: "Last",
-                value: lastCheckInText(for: pact)
-            )
-        }
-    }
-
-    private func weeklySummaryCard(for pact: Pact) -> some View {
-        let summary = weeklySummary(for: pact)
-
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("This week")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(AppColors.textPrimary)
+                Text("\(progress.logged) of \(progress.scheduled) check-ins this week")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(AppColors.textSecondary)
 
                 Spacer()
 
-                Text("\(summary.loggedDays)/\(summary.scheduledDays) due")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(AppColors.accent)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(AppColors.accentGlow)
-                    .clipShape(Capsule())
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(AppColors.textMuted)
             }
-
-            HStack(spacing: 10) {
-                WeeklySummaryMetric(label: "Did it", value: "\(summary.didIt)")
-                WeeklySummaryMetric(label: "Partial", value: "\(summary.partial)")
-                WeeklySummaryMetric(label: "Missed", value: "\(summary.missed)")
-            }
-
-            Text(summary.prompt)
-                .font(.system(size: 13))
-                .foregroundColor(AppColors.textSecondary)
-                .lineSpacing(3)
+            .padding(.horizontal, 2)
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
         }
-        .padding(14)
-        .background(AppColors.backgroundElevated.opacity(0.7))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(progress.logged) of \(progress.scheduled) check-ins this week. Open goal details.")
     }
 
     // MARK: - Empty
@@ -509,7 +502,8 @@ struct HomeView: View {
     private func logTodayCheckIn(for pact: Pact, outcome: TodayCheckInOutcome) {
         selectedOutcomes[pact.id] = outcome
         reflectionNotes[pact.id] = ""
-        focusedField = .reflection(pact.id)
+        noteComposerPactIDs.remove(pact.id)
+        focusedField = nil
 
         pactStore.addTodayCheckIn(
             pactId: pact.id,
@@ -520,11 +514,6 @@ struct HomeView: View {
 
         rescheduleReminders(for: pact.id)
         syncNextActionDraft(for: pact)
-        savedPactIDs.insert(pact.id)
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            savedPactIDs.remove(pact.id)
-        }
     }
 
     private func saveTodayCheckIn(for pact: Pact, outcome: TodayCheckInOutcome) {
@@ -536,19 +525,22 @@ struct HomeView: View {
         )
 
         rescheduleReminders(for: pact.id)
-        resetCheckInComposer(for: pact.id)
+        noteComposerPactIDs.remove(pact.id)
+        reflectionNotes[pact.id] = ""
         syncNextActionDraft(for: pact)
         focusedField = nil
-        savedPactIDs.insert(pact.id)
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            savedPactIDs.remove(pact.id)
-        }
     }
 
     private func syncTodayDrafts() {
-        for pact in todayPacts where nextActionDrafts[pact.id] == nil {
-            syncNextActionDraft(for: pact)
+        for pact in todayPacts {
+            if nextActionDrafts[pact.id] == nil {
+                syncNextActionDraft(for: pact)
+            }
+
+            if selectedOutcomes[pact.id] == nil,
+               let checkIn = pact.checkIns.last(where: { Calendar.current.isDateInToday($0.date) }) {
+                selectedOutcomes[pact.id] = outcome(for: checkIn.progress)
+            }
         }
     }
 
@@ -562,11 +554,6 @@ struct HomeView: View {
         Task {
             await ReminderManager.scheduleReminder(for: pact)
         }
-    }
-
-    private func resetCheckInComposer(for pactId: String) {
-        selectedOutcomes.removeValue(forKey: pactId)
-        reflectionNotes[pactId] = ""
     }
 
     private func nextActionHasChanges(for pact: Pact) -> Bool {
@@ -601,120 +588,42 @@ struct HomeView: View {
         }
     }
 
-    private func lastCheckInText(for pact: Pact) -> String {
-        guard let checkIn = pactStore.lastCheckIn(for: pact) else {
-            return "None"
-        }
-
-        if Calendar.current.isDateInToday(checkIn.date) {
-            return "Today"
-        }
-
-        return checkIn.date.formatted(.dateTime.month(.abbreviated).day())
+    private func outcome(for progress: Int) -> TodayCheckInOutcome {
+        if progress >= 100 { return .didIt }
+        if progress > 0 { return .partial }
+        return .missed
     }
 
-    private func weeklySummary(for pact: Pact) -> WeeklySummary {
+    private func weeklyProgress(for pact: Pact) -> WeeklyProgress {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-        let startDate = calendar.date(byAdding: .day, value: -6, to: today) ?? today
-        let pactStartDate = calendar.startOfDay(for: pact.sealTimestamp ?? pact.createdAt)
-        let summaryStartDate = max(startDate, pactStartDate)
-        let checkIns = pact.checkIns.filter {
-            $0.date >= summaryStartDate && pactStore.isScheduledForCheckIn(pact, on: $0.date)
-        }
-        let didIt = checkIns.filter { $0.progress >= 100 }.count
-        let partial = checkIns.filter { $0.progress > 0 && $0.progress < 100 }.count
-        let missed = checkIns.filter { $0.progress == 0 }.count
-        let loggedDays = Set(checkIns.map { calendar.startOfDay(for: $0.date) }).count
-        let scheduledDays = (0..<7).reduce(into: 0) { count, dayOffset in
-            guard let date = calendar.date(byAdding: .day, value: -dayOffset, to: today) else { return }
-            if date >= summaryStartDate && pactStore.isScheduledForCheckIn(pact, on: date) {
-                count += 1
+        let weekStart = calendar.dateInterval(of: .weekOfYear, for: today)?.start ?? today
+        let pactStart = calendar.startOfDay(for: pact.sealTimestamp ?? pact.createdAt)
+        let start = max(weekStart, pactStart)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? Date()
+
+        var scheduledDays = 0
+        var date = start
+        while date <= today {
+            if pactStore.isScheduledForCheckIn(pact, on: date) {
+                scheduledDays += 1
             }
+            date = calendar.date(byAdding: .day, value: 1, to: date) ?? today.addingTimeInterval(1)
         }
 
-        let prompt: String
-        if loggedDays == 0 {
-            prompt = "Start with one check-in today. The habit loop should feel light."
-        } else if missed > didIt {
-            prompt = "Look for the smallest version of this action that still counts tomorrow."
-        } else {
-            prompt = "Notice what made the good days easier, then repeat that setup tomorrow."
-        }
+        let loggedDays = Set(
+            pact.checkIns
+                .filter { $0.date >= start && $0.date < tomorrow }
+                .map { calendar.startOfDay(for: $0.date) }
+        ).count
 
-        return WeeklySummary(
-            didIt: didIt,
-            partial: partial,
-            missed: missed,
-            loggedDays: loggedDays,
-            scheduledDays: max(scheduledDays, 1),
-            prompt: prompt
-        )
+        return WeeklyProgress(logged: loggedDays, scheduled: max(scheduledDays, loggedDays))
     }
 }
 
-private struct WeeklySummary {
-    let didIt: Int
-    let partial: Int
-    let missed: Int
-    let loggedDays: Int
-    let scheduledDays: Int
-    let prompt: String
-}
-
-private struct WeeklySummaryMetric: View {
-    let label: String
-    let value: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(value)
-                .font(.system(size: 17, weight: .bold))
-                .foregroundColor(AppColors.textPrimary)
-
-            Text(label)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(AppColors.textSecondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(AppColors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-}
-
-private struct TodayStatTile: View {
-    let icon: String
-    let label: String
-    let value: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(AppColors.accent)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(value)
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundColor(AppColors.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-
-                Text(label)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(AppColors.textSecondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(AppColors.backgroundElevated)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-    }
+private struct WeeklyProgress {
+    let logged: Int
+    let scheduled: Int
 }
 
 // Extension to make String identifiable for fullScreenCover
