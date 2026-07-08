@@ -83,22 +83,17 @@ struct ContentView: View {
                 hasCompletedOnboarding = true
             }
         }
+        .background(KeyboardDismissalLayer())
     }
 
     private var profileToolbarButton: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            Button {
+            ToolbarSymbolButton(
+                systemName: "person.crop.circle",
+                accessibilityLabel: "Open settings"
+            ) {
                 showSettings = true
-            } label: {
-                Image(systemName: "person.crop.circle")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(AppColors.textSecondary)
-                    .frame(width: 36, height: 36)
-                    .background(AppColors.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Open settings")
         }
     }
     

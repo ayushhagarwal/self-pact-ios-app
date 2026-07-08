@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SealAnimation: View {
     let visible: Bool
+    let pactTitle: String
     let onComplete: () -> Void
 
     @State private var overlayOpacity: Double = 0
@@ -30,19 +31,18 @@ struct SealAnimation: View {
                     .frame(width: 142, height: 142)
                     .scaleEffect(markScale)
 
-                    VStack(spacing: 8) {
-                        Text("Goal locked")
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundColor(AppColors.textPrimary)
-                            .tracking(-0.6)
-                            .multilineTextAlignment(.center)
+                    VStack(spacing: 10) {
+                        Text("PROMISE LOCKED")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(AppColors.commitmentLight)
+                            .tracking(1.2)
 
-                        Text("Your commitment is active. Today will keep the next small action front and center.")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(AppColors.textSecondary)
-                            .lineSpacing(4)
+                        Text(pactTitle)
+                            .font(.system(size: 25, weight: .bold))
+                            .foregroundColor(AppColors.textPrimary)
+                            .tracking(-0.4)
                             .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
+                            .lineLimit(3)
                     }
                     .opacity(textOpacity)
 
@@ -99,47 +99,47 @@ struct SealAnimation: View {
     }
 
     private func startAnimation() {
-        withAnimation(.easeOut(duration: 0.22)) {
+        withAnimation(.easeOut(duration: 0.28)) {
             overlayOpacity = 1
             cardOpacity = 1
         }
 
-        withAnimation(.spring(response: 0.46, dampingFraction: 0.82)) {
+        withAnimation(.spring(response: 0.58, dampingFraction: 0.86)) {
             cardScale = 1
             markScale = 1
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-            withAnimation(.easeInOut(duration: 0.55)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
+            withAnimation(.easeInOut(duration: 0.72)) {
                 ringTrim = 1
             }
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
-            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.42) {
+            let impactFeedback = UIImpactFeedbackGenerator(style: .rigid)
             impactFeedback.impactOccurred()
 
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.7)) {
+            withAnimation(.spring(response: 0.58, dampingFraction: 0.78)) {
                 lockOffset = 0
             }
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.54) {
-            let notificationFeedback = UINotificationFeedbackGenerator()
-            notificationFeedback.notificationOccurred(.success)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.78) {
+            let confirmationFeedback = UIImpactFeedbackGenerator(style: .soft)
+            confirmationFeedback.impactOccurred()
 
             withAnimation(.easeInOut(duration: 0.34)) {
                 checkTrim = 1
             }
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.74) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.02) {
             withAnimation(.easeOut(duration: 0.28)) {
                 textOpacity = 1
             }
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.92) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.22) {
             withAnimation(.easeOut(duration: 0.28)) {
                 actionOpacity = 1
             }
@@ -208,6 +208,6 @@ private struct CheckMarkShape: Shape {
 }
 
 #Preview {
-    SealAnimation(visible: true, onComplete: {})
+    SealAnimation(visible: true, pactTitle: "Move my body consistently", onComplete: {})
         .background(AppColors.background)
 }

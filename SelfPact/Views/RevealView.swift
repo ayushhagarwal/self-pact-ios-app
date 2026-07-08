@@ -1,6 +1,7 @@
 import SwiftUI
+import StoreKit
 
-enum RevealPhase {
+enum RevealPhase: Hashable {
     case intro
     case goal
     case question
@@ -16,6 +17,7 @@ struct RevealView: View {
     let pactId: String
     
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.requestReview) private var requestReview
     @EnvironmentObject var pactStore: PactStore
     
     @State private var phase: RevealPhase = .intro
@@ -64,6 +66,9 @@ struct RevealView: View {
         }
         .onAppear {
             startIntroAnimation()
+        }
+        .task(id: phase) {
+            await requestReviewIfAppropriate()
         }
     }
     
@@ -159,7 +164,7 @@ struct RevealView: View {
                     Button {
                         handleOutcome(.partially)
                     } label: {
-                        Text("Partially")
+                        Text("Made progress")
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundColor(AppColors.textSecondary)
                             .frame(maxWidth: .infinity)
@@ -419,6 +424,24 @@ struct RevealView: View {
         }
         phase = .complete
         startCompleteAnimation()
+    }
+
+    private func requestReviewIfAppropriate() async {
+        guard phase == .complete,
+              selectedOutcome == .yes,
+              let pact,
+              ReviewPromptPolicy.isEligible(
+                after: pact,
+                completedPactCount: pactStore.completedPacts.count
+              ) else {
+            return
+        }
+
+        try? await Task.sleep(for: .seconds(3))
+        guard !Task.isCancelled, phase == .complete else { return }
+
+        ReviewPromptPolicy.recordAttempt()
+        requestReview()
     }
 }
 

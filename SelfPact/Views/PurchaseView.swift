@@ -19,6 +19,7 @@ struct PurchaseView: View {
                 ScrollView {
                     VStack(spacing: 28) {
                         hero
+                        earnedValueCard
                         benefits
                         purchaseSection
                     }
@@ -29,17 +30,9 @@ struct PurchaseView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button {
+                    ToolbarSymbolButton(systemName: "xmark", accessibilityLabel: "Close") {
                         dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(AppColors.textSecondary)
-                            .frame(width: 34, height: 34)
-                            .background(AppColors.backgroundElevated)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
-                    .accessibilityLabel("Close")
                 }
             }
             .task {
@@ -73,7 +66,7 @@ struct PurchaseView: View {
                     .foregroundColor(AppColors.textPrimary)
                     .tracking(-1)
 
-                Text("Keep making promises to yourself without paying for every new pact.")
+                Text(heroMessage)
                     .font(.system(size: 15, weight: .medium))
                     .foregroundColor(AppColors.textSecondary)
                     .multilineTextAlignment(.center)
@@ -81,16 +74,51 @@ struct PurchaseView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if !pactStore.hasLifetimeAccess {
-                Text("Three locked pacts are included free")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(AppColors.accent)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(AppColors.accentGlow)
-                    .clipShape(Capsule())
-            }
+            Text("Continue with unlimited pacts.")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(AppColors.accent)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(AppColors.accentGlow)
+                .clipShape(Capsule())
         }
+    }
+
+    private var earnedValueCard: some View {
+        HStack(spacing: 0) {
+            valueMetric(
+                value: "\(pactStore.lockedPactCount)",
+                label: pactStore.lockedPactCount == 1 ? "Promise made" : "Promises made"
+            )
+
+            Divider()
+                .frame(height: 42)
+
+            valueMetric(
+                value: "\(pactStore.freePactsRemaining)",
+                label: "Included left"
+            )
+        }
+        .padding(.vertical, 18)
+        .background(AppColors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(AppColors.border, lineWidth: 1)
+        )
+    }
+
+    private func valueMetric(value: String, label: String) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.system(size: 26, weight: .bold))
+                .foregroundColor(AppColors.textPrimary)
+
+            Text(label)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(AppColors.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var benefits: some View {
@@ -99,16 +127,6 @@ struct PurchaseView: View {
                 icon: "lock.open.fill",
                 title: "Unlimited locked pacts",
                 detail: "Start the next commitment whenever you are ready."
-            )
-
-            Divider()
-                .background(AppColors.border)
-                .padding(.leading, 54)
-
-            benefitRow(
-                icon: "clock.arrow.circlepath",
-                title: "Keep your permanent history",
-                detail: "Completed and broken pacts remain part of your record."
             )
 
             Divider()
@@ -214,6 +232,20 @@ struct PurchaseView: View {
             return "Unlock forever · \(product.displayPrice)"
         }
         return "Try loading GoalLock Plus"
+    }
+
+    private var heroMessage: String {
+        let keptCount = pactStore.completedPacts.filter { $0.outcome == .yes }.count
+        if keptCount == 1 {
+            return "You kept a promise to yourself. Keep going."
+        }
+        if keptCount > 1 {
+            return "You kept \(keptCount) promises to yourself. Keep going."
+        }
+        if pactStore.lockedPactCount > 0 {
+            return "You have started showing up for your promises."
+        }
+        return "Your first 3 locked pacts are included."
     }
 
     private var errorBinding: Binding<Bool> {

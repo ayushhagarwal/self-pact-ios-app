@@ -55,7 +55,7 @@ struct GoalsView: View {
 
                         if !archivedGoals.isEmpty {
                             tuckedGoalsSection(
-                                title: "Permanent archive",
+                                title: "Past pacts",
                                 count: archivedGoals.count,
                                 isExpanded: $showCompletedArchive,
                                 pacts: archivedGoals
@@ -189,7 +189,7 @@ struct GoalsView: View {
                     .foregroundColor(AppColors.textPrimary)
                     .tracking(-0.3)
 
-                Text("Start free, build a daily rhythm, then lock a goal when the commitment feels worth it.")
+                Text("Your first 3 locked pacts are included. Start with one clear promise and a small action for today.")
                     .font(.system(size: 15))
                     .foregroundColor(AppColors.textSecondary)
                     .multilineTextAlignment(.center)

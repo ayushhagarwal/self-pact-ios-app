@@ -177,7 +177,7 @@ struct HomeView: View {
     private func activeGoalHeader(for pact: Pact) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Label(pact.status == .sealed ? "Active locked goal" : "Trial goal", systemImage: pact.status == .sealed ? "lock.fill" : "target")
+                Label(pact.status == .sealed ? "Locked pact" : "Trial goal", systemImage: pact.status == .sealed ? "lock.fill" : "target")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(pact.status == .sealed ? AppColors.commitment : AppColors.accent)
                     .padding(.horizontal, 10)
@@ -402,7 +402,7 @@ struct HomeView: View {
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(AppColors.textPrimary)
 
-                    Text("This goal has reached its target date.")
+                    Text("This pact has reached its review date.")
                         .font(.system(size: 13))
                         .foregroundColor(AppColors.textSecondary)
                 }
@@ -511,6 +511,8 @@ struct HomeView: View {
             note: nil,
             nextAction: nextActionDraft(for: pact)
         )
+
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
 
         rescheduleReminders(for: pact.id)
         syncNextActionDraft(for: pact)

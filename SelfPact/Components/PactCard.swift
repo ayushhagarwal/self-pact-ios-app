@@ -12,7 +12,7 @@ struct PactCard: View {
         } else if pact.status == .completed {
             return AppColors.success
         } else if pact.status == .broken {
-            return AppColors.error
+            return AppColors.textSecondary
         }
         return AppColors.border
     }
@@ -23,7 +23,7 @@ struct PactCard: View {
         } else if pact.status == .completed {
             return AppColors.successGlow
         } else if pact.status == .broken {
-            return AppColors.errorGlow
+            return AppColors.backgroundElevated
         }
         return AppColors.backgroundElevated
     }
@@ -34,7 +34,7 @@ struct PactCard: View {
         } else if pact.status == .completed {
             return AppColors.success
         } else if pact.status == .broken {
-            return AppColors.error
+            return AppColors.textSecondary
         }
         return AppColors.textSecondary
     }
@@ -154,12 +154,12 @@ struct PactCard: View {
                         }
                     } else if pact.status == .broken {
                         HStack {
-                            Text("Pact broken")
+                            Text("Pact ended")
                                 .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(AppColors.error)
+                                .foregroundColor(AppColors.textSecondary)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
-                                .background(AppColors.errorGlow)
+                                .background(AppColors.backgroundElevated)
                                 .cornerRadius(8)
 
                             Spacer()
@@ -193,7 +193,7 @@ struct PactCard: View {
     private func outcomeText(_ outcome: PactOutcome) -> String {
         switch outcome {
         case .yes: return "Achieved"
-        case .partially: return "Partial"
+        case .partially: return "Made progress"
         case .notYet: return "Reflected"
         }
     }

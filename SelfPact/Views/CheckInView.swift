@@ -36,18 +36,8 @@ struct CheckInView: View {
     // MARK: - Close Button
     
     private var closeButton: some View {
-        Button {
+        ToolbarSymbolButton(systemName: "xmark", accessibilityLabel: "Close") {
             dismiss()
-        } label: {
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(AppColors.backgroundElevated)
-                    .frame(width: 34, height: 34)
-                
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(AppColors.textSecondary)
-            }
         }
     }
     

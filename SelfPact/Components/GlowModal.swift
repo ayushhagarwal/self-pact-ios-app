@@ -57,20 +57,9 @@ struct GlowModal<Content: View>: View {
 
                         Spacer(minLength: 0)
 
-                        Button {
+                        ToolbarSymbolButton(systemName: "xmark", accessibilityLabel: "Close") {
                             onDismiss()
-                        } label: {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 14)
-                                    .fill(AppColors.background)
-                                    .frame(width: 34, height: 34)
-
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundColor(AppColors.textSecondary)
-                            }
                         }
-                        .buttonStyle(.plain)
                     }
 
                     content

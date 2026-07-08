@@ -34,7 +34,7 @@ struct PreviewPactView: View {
             }
             
             // Seal animation overlay
-            SealAnimation(visible: showSealAnimation) {
+            SealAnimation(visible: showSealAnimation, pactTitle: pact?.title ?? "Your promise") {
                 showSealAnimation = false
                 // Dismiss all the way back to home
                 if let onDismissAll = onDismissAll {
@@ -44,7 +44,7 @@ struct PreviewPactView: View {
                 }
             }
         }
-        .navigationTitle("Lock Goal")
+        .navigationTitle("Make a Pact")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(showSealAnimation)
         .sheet(isPresented: $showPurchase) {
@@ -149,7 +149,7 @@ struct PreviewPactView: View {
                     handleSeal()
                 }
             } label: {
-                Text(needsPlusUpgrade ? "Unlock GoalLock Plus" : "Lock Goal")
+                Text(needsPlusUpgrade ? "Unlock GoalLock Plus" : "Make This Pact")
                     .font(.system(size: 16, weight: .bold))
                     .tracking(-0.2)
                     .foregroundColor(.white)
@@ -173,7 +173,7 @@ struct PreviewPactView: View {
                     .foregroundColor(AppColors.accent)
             }
 
-            Text("This cannot be edited after locking")
+            Text("Keep this promise unchanged until your review date")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(AppColors.textSecondary)
                 .padding(.top, 4)
@@ -194,7 +194,7 @@ struct PreviewPactView: View {
                     .foregroundColor(AppColors.accent)
             }
             
-            Text("This goal is already locked.")
+            Text("This pact is already locked.")
                 .font(.system(size: 16))
                 .foregroundColor(AppColors.textSecondary)
                 .multilineTextAlignment(.center)

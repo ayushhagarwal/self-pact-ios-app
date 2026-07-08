@@ -54,18 +54,8 @@ struct CreatePactView: View {
     // MARK: - Close Button
     
     private var closeButton: some View {
-        Button {
+        ToolbarSymbolButton(systemName: "xmark", accessibilityLabel: "Close") {
             dismiss()
-        } label: {
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(AppColors.backgroundElevated)
-                    .frame(width: 34, height: 34)
-                
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(AppColors.textSecondary)
-            }
         }
     }
     
@@ -90,7 +80,7 @@ struct CreatePactView: View {
                 .tracking(-1.0)
                 .padding(.bottom, 10)
             
-            Text("Write clearly. This becomes a commitment once locked.")
+            Text("Write clearly. You’ll keep this promise unchanged once it’s locked.")
                 .font(.system(size: 15, weight: .medium))
                 .foregroundColor(AppColors.textSecondary)
                 .tracking(-0.1)
@@ -114,7 +104,7 @@ struct CreatePactView: View {
                     .textFieldStyle(PactTextFieldStyle(hasError: errors["title"] != nil))
                     .onChange(of: title) { _, _ in errors.removeValue(forKey: "title") }
 
-                Text("Be specific. This cannot be changed later.")
+                Text("Make it specific enough to recognize progress.")
                     .font(.system(size: 12))
                     .foregroundColor(AppColors.textSecondary)
                 
